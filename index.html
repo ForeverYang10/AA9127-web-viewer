@@ -215,7 +215,8 @@
         if (err.name === 'NotFoundError') {
           log('使用者取消了裝置選擇。', 'info');
         } else {
-          log(`錯誤: ${err.message}`, 'error');
+          // ⚠️ 把完整的錯誤名稱與訊息印出來
+          log(`連線失敗錯誤 [${err.name}]: ${err.message}`, 'error');
         }
       }
     }
