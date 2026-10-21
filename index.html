@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BLE Wi-Fi Provisioning Dashboard</title>
+  <title>BLE Wi-Fi Provisioning (穩定版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
@@ -28,11 +28,6 @@
       <span id="device-status-text" class="text-xs text-slate-400 font-mono">未連線</span>
     </div>
 
-    <!-- 環境安全檢查提示 -->
-    <div id="env-warning" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-amber-400 text-xs">
-      ⚠️ 您的瀏覽器目前不支援 Web BLE，或是目前的連線並非 HTTPS / Localhost 環境。
-    </div>
-
     <!-- Wi-Fi 設定表單 -->
     <div class="space-y-4">
       <div>
@@ -51,15 +46,6 @@
           </button>
         </div>
       </div>
-
-      <!-- 記住資訊 (localStorage) 提示與清除鈕 -->
-      <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-        <span class="flex items-center gap-1">
-          <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
-          自動儲存至 LocalStorage
-        </span>
-        <button onclick="clearCachedCredentials()" class="text-rose-400 hover:underline">清除快取</button>
-      </div>
     </div>
 
     <!-- 連線觸發按鈕 -->
@@ -69,45 +55,28 @@
     </button>
 
     <!-- 狀態顯示區域 -->
-    <div id="status-log" class="bg-slate-900/80 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 h-28 overflow-y-auto space-y-1">
+    <div id="status-log" class="bg-slate-900/80 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 h-36 overflow-y-auto space-y-1">
       <div class="text-slate-500">> 等待開始...</div>
     </div>
 
   </div>
 
   <script>
-    const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-    const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26ae';
-
     window.addEventListener('DOMContentLoaded', () => {
-      checkEnvironment();
-      loadCachedCredentials();
+      const savedSsid = localStorage.getItem('ble_wifi_ssid');
+      const savedPass = localStorage.getItem('ble_wifi_pass');
+      if (savedSsid) document.getElementById('wifi-ssid').value = savedSsid;
+      if (savedPass) document.getElementById('wifi-pass').value = savedPass;
     });
 
-    function checkEnvironment() {
-      const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      if (!navigator.bluetooth || !isSecure) {
-        document.getElementById('env-warning').classList.remove('hidden');
-      }
-    }
-
-    // 更新頂部裝置狀態 UI
     function updateDeviceStatus(state, text) {
       const dot = document.getElementById('device-status-dot');
       const statusText = document.getElementById('device-status-text');
-      
       dot.className = "w-3 h-3 rounded-full animate-pulse";
-      if (state === 'connected') {
-        dot.classList.add('bg-emerald-500');
-      } else if (state === 'connecting') {
-        dot.classList.add('bg-amber-400');
-      } else if (state === 'error') {
-        dot.classList.add('bg-rose-500');
-        dot.classList.remove('animate-pulse');
-      } else {
-        dot.classList.add('bg-slate-500');
-        dot.classList.remove('animate-pulse');
-      }
+      if (state === 'connected') dot.classList.add('bg-emerald-500');
+      else if (state === 'connecting') dot.classList.add('bg-amber-400');
+      else if (state === 'error') dot.classList.add('bg-rose-500');
+      else dot.classList.add('bg-slate-500');
       statusText.textContent = text;
     }
 
@@ -137,26 +106,8 @@
       }
     }
 
-    function loadCachedCredentials() {
-      const savedSsid = localStorage.getItem('ble_wifi_ssid');
-      const savedPass = localStorage.getItem('ble_wifi_pass');
-      if (savedSsid) document.getElementById('wifi-ssid').value = savedSsid;
-      if (savedPass) document.getElementById('wifi-pass').value = savedPass;
-      if (savedSsid) log('已自動帶入歷史 Wi-Fi 設定。');
-    }
-
-    function saveCredentials(ssid, pass) {
-      localStorage.setItem('ble_wifi_ssid', ssid);
-      localStorage.setItem('ble_wifi_pass', pass);
-    }
-
-    function clearCachedCredentials() {
-      localStorage.removeItem('ble_wifi_ssid');
-      localStorage.removeItem('ble_wifi_pass');
-      document.getElementById('wifi-ssid').value = '';
-      document.getElementById('wifi-pass').value = '';
-      log('已清除 LocalStorage 快取資訊。');
-    }
+    // 簡單的延遲等待工具函式
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     async function startBLEProvisioning() {
       const ssid = document.getElementById('wifi-ssid').value.trim();
@@ -167,62 +118,78 @@
         return;
       }
 
-      saveCredentials(ssid, pass);
+      localStorage.setItem('ble_wifi_ssid', ssid);
+      localStorage.setItem('ble_wifi_pass', pass);
 
       if (!navigator.bluetooth) {
-        log('您的瀏覽器不支援 Web Bluetooth API。', 'error');
+        log('瀏覽器不支援 Web Bluetooth', 'error');
         return;
       }
 
       try {
-        log('正在掃描 BLE 裝置...');
-        updateDeviceStatus('connecting', '掃描中...');
+        log('正在開啟藍牙選單...');
+        updateDeviceStatus('connecting', '選擇裝置中...');
 
         const device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'DK_AirBed' }],
-          optionalServices: [SERVICE_UUID]
+          acceptAllDevices: true,
+          optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
         });
 
-        log(`已找到裝置：${device.name}，正在建立 GATT 連線...`);
-        updateDeviceStatus('connecting', '連接藍牙中...');
+        log(`已選擇裝置: ${device.name || '未命名'}`, 'success');
+        updateDeviceStatus('connecting', '建立 GATT 連線...');
 
         const server = await device.gatt.connect();
-        updateDeviceStatus('connected', `已連線 (${device.name})`);
+        
+        // 🌟 關鍵修正：連線後強制等待 800 毫秒，讓 ESP32 穩定完成底層交握
+        log('GATT 已連線，等待底層服務穩定...');
+        await delay(800);
 
+        updateDeviceStatus('connecting', '尋找 BLE 服務...');
         log('取得 BLE 服務...');
-        const service = await server.getPrimaryService(SERVICE_UUID);
 
-        log('取得 BLE 特徵...');
-        const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+        // 直接尋找所有 Services 並挑選第一個可寫入特徵
+        const services = await server.getPrimaryServices();
+        let targetCharacteristic = null;
 
-        // 嘗試啟用通知 (若 ESP32 端未支援 notify，此段若報錯會被 catch 捕捉以供除錯)
-        try {
-          await characteristic.startNotifications();
-          characteristic.addEventListener('characteristicvaluechanged', (event) => {
-            const value = new TextDecoder().decode(event.target.value);
-            log(`裝置回報: ${value}`, 'success');
-            updateDeviceStatus('connected', value);
-          });
-          log('已成功啟用藍牙通知監聽。');
-        } catch (notifyErr) {
-          log(`注意: 無法啟用 Notify (${notifyErr.message})，將改用純寫入模式。`, 'error');
+        for (const service of services) {
+          try {
+            const characteristics = await service.getCharacteristics();
+            for (const char of characteristics) {
+              if (char.properties.write || char.properties.writeWithoutResponse) {
+                targetCharacteristic = char;
+                log(`🎯 鎖定可寫入特徵: ${char.uuid}`, 'success');
+                break;
+              }
+            }
+          } catch (e) {
+            // 忽略無法讀取的服務
+          }
+          if (targetCharacteristic) break;
         }
 
-        // 寫入 Wi-Fi 帳密
+        if (!targetCharacteristic) {
+          throw new Error('找不到任何可寫入的 BLE 特徵！');
+        }
+
+        // 打包並寫入
         const payload = JSON.stringify({ ssid: ssid, pass: pass });
         const encoder = new TextEncoder();
         
-        log('正在寫入 Wi-Fi 帳密資訊...');
-        await characteristic.writeValue(encoder.encode(payload));
-        log('✅ 帳密已送出，等待 ESP32 連線 Wi-Fi...', 'success');
+        updateDeviceStatus('connecting', '正在傳送設定...');
+        log('正在寫入 Wi-Fi 帳密...');
+        await targetCharacteristic.writeValue(encoder.encode(payload));
+        
+        log('✅ 帳密寫入成功！', 'success');
+        updateDeviceStatus('connected', '設定已傳送');
 
+        device.gatt.disconnect();
       } catch (err) {
-        updateDeviceStatus('error', '連線失敗');
+        updateDeviceStatus('error', '執行失敗');
+        // 清楚分開真實取消與其他錯誤
         if (err.name === 'NotFoundError') {
           log('使用者取消了裝置選擇。', 'info');
         } else {
-          // 精準印出詳細錯誤名稱與訊息，方便排查
-          log(`連線失敗錯誤 [${err.name}]: ${err.message}`, 'error');
+          log(`錯誤類型 [${err.name}]: ${err.message}`, 'error');
         }
       }
     }
