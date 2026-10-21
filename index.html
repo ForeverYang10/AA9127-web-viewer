@@ -157,7 +157,7 @@
 
         // 請求選擇藍牙裝置
         const device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'ESP32' }],
+          filters: [{ namePrefix: 'DK_AirBed' }],
           optionalServices: [SERVICE_UUID]
         });
 
