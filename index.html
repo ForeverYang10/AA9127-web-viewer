@@ -1,92 +1,54 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>東庚自動氣墊床 - BLE Wi-Fi 配網</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BLE Wi-Fi Provisioning</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
+  </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-<div class="max-w-md w-full bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 space-y-6">
+  <div class="max-w-md w-full bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 space-y-6">
     
     <!-- 標頭資訊 -->
     <div class="text-center space-y-1">
-        <h1 class="text-2xl font-bold text-emerald-400">東庚氣墊床 BLE 配網</h1>
-        <p class="text-slate-400 text-sm">透過藍牙設定控制器的 Wi-Fi 網路</p>
+      <h1 class="text-2xl font-bold text-emerald-400">BLE 裝置配網</h1>
+      <p class="text-slate-400 text-sm">透過藍牙傳送設定資料</p>
     </div>
 
-    <!-- 裝置連線即時狀態指示燈 -->
-    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3 flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-            <span id="device-status-dot" class="w-3 h-3 rounded-full bg-slate-500"></span>
-            <span class="text-xs text-slate-300 font-medium">連線狀態：</span>
-        </div>
-        <span id="stat" class="text-xs text-slate-400 font-mono">未連線</span>
+    <!-- Wi-Fi 設定表單 -->
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 名稱 (SSID)</label>
+        <input id="wifi-ssid" type="text" placeholder="請輸入 Wi-Fi 名稱"
+               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
+        <input id="wifi-pass" type="password" placeholder="請輸入 Wi-Fi 密碼"
+               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
+      </div>
     </div>
 
-    <!-- 搜尋與連線按鈕 -->
-    <button id="conn-btn" onclick="connect()" 
-            class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-lg shadow-emerald-900/30">
-        🔍 搜尋並連線氣墊床
+    <!-- 連線觸發按鈕 -->
+    <button onclick="startBLEProvisioning()" 
+            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition">
+      🔍 搜尋並傳送設定
     </button>
 
-    <!-- Wi-Fi 設定表單 (帶 LocalStorage 記憶與密碼顯示切換) -->
-    <div class="space-y-4 pt-2 border-t border-slate-700">
-        <h3 class="text-sm font-bold text-slate-300">網際網路與 Wi-Fi 設定</h3>
-        
-        <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Wi-Fi SSID</label>
-            <div class="flex gap-2">
-                <input id="cfg-ssid" type="text" placeholder="請輸入 Wi-Fi 名稱"
-                       class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-emerald-500">
-                <button onclick="sendCfg('ssid', 'cfg-ssid')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg transition">設定</button>
-            </div>
-        </div>
-
-        <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Wi-Fi Password</label>
-            <div class="relative flex gap-2">
-                <input id="cfg-pw" type="password" placeholder="請輸入 Wi-Fi 密碼"
-                       class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-emerald-500 pr-12">
-                <button type="button" id="toggle-pass-btn" onclick="togglePassVisibility()" class="absolute right-16 top-2.5 text-xs text-slate-400 hover:text-slate-200 py-1 px-1">
-                    顯示
-                </button>
-                <button onclick="sendCfg('pw', 'cfg-pw')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg transition">設定</button>
-            </div>
-        </div>
-
-        <!-- LocalStorage 提示與清除 -->
-        <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-            <span class="flex items-center gap-1">
-                <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
-                已啟用 LocalStorage 記憶
-            </span>
-            <button onclick="clearCache()" class="text-rose-400 hover:underline">清除快取</button>
-        </div>
-    </div>
-
-    <!-- 快捷系統指令 -->
-    <div class="pt-2 border-t border-slate-700 space-y-2">
-        <h3 class="text-sm font-bold text-slate-300">系統診斷</h3>
-        <div class="grid grid-cols-2 gap-2">
-            <button onclick="sendRaw({wifi:'cnct'})" class="py-2 px-3 bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-amber-400 transition">確認 Wi-Fi 連線</button>
-            <button onclick="sendOp('get')" class="py-2 px-3 bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-sky-400 transition">完整狀態查詢</button>
-        </div>
-    </div>
-
-    <!-- 狀態訊息記錄視窗 -->
+    <!-- 狀態顯示區域 -->
     <div id="status-log" class="bg-slate-900/80 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 h-28 overflow-y-auto space-y-1">
-        <div class="text-slate-500">> 等待藍牙連線...</div>
+      <div class="text-slate-500">> 等待開始...</div>
     </div>
 
-</div>
+  </div>
 
-<script>
-    // 使用舊專案驗證成功的東庚正確藍牙 UUID 與雙特徵
+  <script>
+    // 引用您指定的標準 UUID 架構
     const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';[cite: 1]
     const CHAR_RX_UUID  = '090de95a-079a-42e1-bde7-78f4b98728c1';[cite: 1]
     const CHAR_TX_UUID  = '090de95a-079a-42e1-bde7-78f4b98728c2';[cite: 1]
@@ -94,152 +56,73 @@
     let rxCharacteristic;
     let txCharacteristic;
 
-    // 頁面載入時檢查藍牙支援並還原 LocalStorage 快取
-    window.addEventListener('DOMContentLoaded', () => {
-        const savedSsid = localStorage.getItem('wifi_ssid');
-        const savedPw = localStorage.getItem('wifi_pw');
-        if (savedSsid) document.getElementById('cfg-ssid').value = savedSsid;
-        if (savedPw) document.getElementById('cfg-pw').value = savedPw;
-
-        if (!navigator.bluetooth) {
-            document.getElementById('stat').innerText = '瀏覽器不支援 Web Bluetooth';
-            document.getElementById('conn-btn').disabled = true;
-            document.getElementById('conn-btn').classList.add('opacity-50');
-        }
-    });
-
-    // 寫入日誌到畫面視窗
     function log(msg, type = 'info') {
-        const logBox = document.getElementById('status-log');
-        const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
-        let colorClass = 'text-slate-300';
-        if (type === 'success') colorClass = 'text-emerald-400 font-bold';
-        if (type === 'error') colorClass = 'text-rose-400 font-bold';
-        
-        const entry = document.createElement('div');
-        entry.className = colorClass;
-        entry.textContent = `[${time}] ${msg}`;
-        logBox.appendChild(entry);
-        logBox.scrollTop = logBox.scrollHeight;
+      const logBox = document.getElementById('status-log');
+      const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+      let colorClass = 'text-slate-300';
+      if (type === 'success') colorClass = 'text-emerald-400 font-bold';
+      if (type === 'error') colorClass = 'text-rose-400 font-bold';
+      
+      const entry = document.createElement('div');
+      entry.className = colorClass;
+      entry.textContent = `[${time}] ${msg}`;
+      logBox.appendChild(entry);
+      logBox.scrollTop = logBox.scrollHeight;
     }
 
-    // 切換密碼顯示隱藏
-    function togglePassVisibility() {
-        const passInput = document.getElementById('cfg-pw');
-        const btn = document.getElementById('toggle-pass-btn');
-        if (passInput.type === 'password') {
-            passInput.type = 'text';
-            btn.textContent = '隱藏';
+    async function startBLEProvisioning() {
+      const ssid = document.getElementById('wifi-ssid').value.trim();
+      const pass = document.getElementById('wifi-pass').value.trim();
+
+      if (!ssid) {
+        alert('請先輸入 Wi-Fi SSID');
+        return;
+      }
+
+      if (!navigator.bluetooth) {
+        log('瀏覽器不支援 Web Bluetooth', 'error');
+        return;
+      }
+
+      try {
+        log('正在搜尋藍牙裝置...');
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'DK_AirBed_' }],[cite: 1]
+          optionalServices: [SERVICE_UUID][cite: 1]
+        });
+
+        log(`已選擇裝置: ${device.name}`);
+        const server = await device.gatt.connect();
+
+        log('取得 BLE 服務...');
+        const service = await server.getPrimaryService(SERVICE_UUID);[cite: 1]
+        rxCharacteristic = await service.getCharacteristic(CHAR_RX_UUID);[cite: 1]
+        txCharacteristic = await service.getCharacteristic(CHAR_TX_UUID);[cite: 1]
+
+        await txCharacteristic.startNotifications();[cite: 1]
+        txCharacteristic.addEventListener('characteristicvaluechanged', (e) => {
+          const val = new TextDecoder().decode(e.target.value);[cite: 1]
+          log(`裝置回報: ${val}`, 'success');
+        });
+
+        const encoder = new TextEncoder();
+        log('正在發送 SSID...');
+        await rxCharacteristic.writeValue(encoder.encode(JSON.stringify({ ssid })));[cite: 1]
+
+        log('正在發送 Password...');
+        await rxCharacteristic.writeValue(encoder.encode(JSON.stringify({ pw: pass })));[cite: 1]
+
+        log('✅ 設定已全數送出！', 'success');
+        device.gatt.disconnect();
+
+      } catch (err) {
+        if (err.name === 'NotFoundError') {
+          log('使用者取消了裝置選擇。', 'info');
         } else {
-            passInput.type = 'password';
-            btn.textContent = '顯示';
+          log(`錯誤: ${err.message}`, 'error');
         }
+      }
     }
-
-    // 清除快取
-    function clearCache() {
-        localStorage.removeItem('wifi_ssid');
-        localStorage.removeItem('wifi_pw');
-        document.getElementById('cfg-ssid').value = '';
-        document.getElementById('cfg-pw').value = '';
-        log('已清除本地快取。');
-    }
-
-    // 發起藍牙連線 (對齊舊專案標準)
-    async function connect() {
-        try {
-            document.getElementById('stat').innerText = '正在搜尋裝置...';
-            log('正在搜尋藍牙裝置 (DK_AirBed_)...');
-            
-            const device = await navigator.bluetooth.requestDevice({
-                filters: [{ namePrefix: 'DK_AirBed_' }],[cite: 1]
-                optionalServices: [SERVICE_UUID][cite: 1]
-            });
-
-            document.getElementById('stat').innerText = '正在連接 GATT...';
-            log(`已選取: ${device.name}，正在建立 GATT 連線...`);
-
-            const server = await device.gatt.connect();
-            const service = await server.getPrimaryService(SERVICE_UUID);[cite: 1]
-            rxCharacteristic = await service.getCharacteristic(CHAR_RX_UUID);[cite: 1]
-            txCharacteristic = await service.getCharacteristic(CHAR_TX_UUID);[cite: 1]
-
-            // 啟用 TX 藍牙通知
-            await txCharacteristic.startNotifications();[cite: 1]
-            txCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);[cite: 1]
-
-            document.getElementById('stat').innerText = `已連線: ${device.name}`;[cite: 1]
-            document.getElementById('device-status-dot').className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse";
-            document.getElementById('conn-btn').style.display = 'none';
-            log(`✅ 藍牙連線成功！`, 'success');
-
-        } catch (error) {
-            console.error(error);
-            document.getElementById('stat').innerText = '連線失敗';
-            document.getElementById('device-status-dot').className = "w-3 h-3 rounded-full bg-rose-500";
-            if (error.name === 'NotFoundError') {
-                log('使用者取消了裝置選擇。', 'info');
-            } else {
-                log(`錯誤: ${error.message}`, 'error');
-            }
-        }
-    }
-
-    // 處理 Controller (TX) 回傳封包
-    function handleNotification(event) {
-        const decoder = new TextDecoder('utf-8');
-        const jsonStr = decoder.decode(event.target.value);[cite: 1]
-        
-        try {
-            const data = JSON.parse(jsonStr);[cite: 1]
-            log(`收到裝置回報: ${jsonStr}`, 'success');
-
-            if (data.ssid === 'ok') alert('控制器回報：Wi-Fi SSID 已成功套用！');[cite: 1]
-            if (data.pw === 'ok') alert('控制器回報：Wi-Fi 密碼已成功套用！');[cite: 1]
-            if (data.wifi === 'ack_cnct') alert('Wi-Fi 網路連線確認成功！');[cite: 1]
-
-        } catch (e) {
-            log(`解析回報資料失敗: ${jsonStr}`, 'error');[cite: 1]
-        }
-    }
-
-    async function sendOp(opCode) {
-        await sendRaw({ "op": opCode });[cite: 1]
-    }
-
-    async function sendCfg(key, inputId) {
-        const val = document.getElementById(inputId).value.trim();
-        if (!val) {
-            alert('請輸入有效內容');
-            return;
-        }
-        
-        // 儲存至 LocalStorage
-        if (key === 'ssid') localStorage.setItem('wifi_ssid', val);
-        if (key === 'pw') localStorage.setItem('wifi_pw', val);
-
-        const obj = {};
-        obj[key] = val;
-        await sendRaw(obj);[cite: 1]
-    }
-
-    async function sendRaw(obj) {
-        if (!rxCharacteristic) {[cite: 1]
-            alert('藍牙未連線！');[cite: 1]
-            return;
-        }
-        const jsonString = JSON.stringify(obj);[cite: 1]
-        try {
-            log(`發送指令: ${jsonString}`);
-            const encoder = new TextEncoder();[cite: 1]
-            await rxCharacteristic.writeValue(encoder.encode(jsonString));[cite: 1]
-            log('指令發送成功', 'success');
-        } catch (error) {
-            log(`發送失敗: ${error.message}`, 'error');[cite: 1]
-            alert(`傳送失敗: ${error.message}`);[cite: 1]
-        }
-    }
-</script>
-
+  </script>
 </body>
 </html>
