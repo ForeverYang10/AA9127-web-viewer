@@ -103,6 +103,7 @@
         dot.classList.add('bg-amber-400');
       } else if (state === 'error') {
         dot.classList.add('bg-rose-500');
+        dot.classList.remove('animate-pulse');
       } else {
         dot.classList.add('bg-slate-500');
         dot.classList.remove('animate-pulse');
@@ -194,13 +195,18 @@
         log('取得 BLE 特徵...');
         const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
-        // 啟用藍牙通知 (接收 ESP32 傳回的 Wi-Fi 連線狀態回饋)
-        await characteristic.startNotifications();
-        characteristic.addEventListener('characteristicvaluechanged', (event) => {
-          const value = new TextDecoder().decode(event.target.value);
-          log(`裝置回報: ${value}`, 'success');
-          updateDeviceStatus('connected', value);
-        });
+        // 嘗試啟用通知 (若 ESP32 端未支援 notify，此段若報錯會被 catch 捕捉以供除錯)
+        try {
+          await characteristic.startNotifications();
+          characteristic.addEventListener('characteristicvaluechanged', (event) => {
+            const value = new TextDecoder().decode(event.target.value);
+            log(`裝置回報: ${value}`, 'success');
+            updateDeviceStatus('connected', value);
+          });
+          log('已成功啟用藍牙通知監聽。');
+        } catch (notifyErr) {
+          log(`注意: 無法啟用 Notify (${notifyErr.message})，將改用純寫入模式。`, 'error');
+        }
 
         // 寫入 Wi-Fi 帳密
         const payload = JSON.stringify({ ssid: ssid, pass: pass });
@@ -215,7 +221,7 @@
         if (err.name === 'NotFoundError') {
           log('使用者取消了裝置選擇。', 'info');
         } else {
-          // ⚠️ 把完整的錯誤名稱與訊息印出來
+          // 精準印出詳細錯誤名稱與訊息，方便排查
           log(`連線失敗錯誤 [${err.name}]: ${err.message}`, 'error');
         }
       }
