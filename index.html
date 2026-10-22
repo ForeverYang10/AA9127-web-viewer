@@ -1,176 +1,221 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BLE Wi-Fi Provisioning</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BLE Wi-Fi Provisioning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: sans-serif;
+        }
+    </style>
 </head>
+
 <body class="min-h-screen flex items-center justify-center p-4">
 
-  <div class="max-w-md w-full bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 space-y-6">
-    
-    <!-- 標頭資訊 -->
-    <div class="text-center space-y-1">
-      <h1 class="text-2xl font-bold text-emerald-400">Wi-Fi 配網設定</h1>
-      <p class="text-slate-400 text-sm">透過 Web BLE 傳送無線網路認證資訊</p>
-    </div>
+    <div class="max-w-md w-full bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 space-y-6">
 
-    <!-- Wi-Fi 設定表單 -->
-    <div class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 名稱 (SSID)</label>
-        <input id="wifi-ssid" type="text" placeholder="請輸入 Wi-Fi 名稱"
-               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
-      </div>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
-        <div class="relative">
-          <input id="wifi-pass" type="password" placeholder="請輸入 Wi-Fi 密碼"
-                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm pr-10">
-          <button type="button" id="toggle-pass-btn" onclick="togglePassVisibility()" class="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-200">
-            顯示
-          </button>
+        <!-- 標頭資訊 -->
+        <div class="text-center space-y-1">
+            <h1 class="text-2xl font-bold text-emerald-400">Wi-Fi 配網設定</h1>
+            <p class="text-slate-400 text-sm">透過 Web BLE 傳送無線網路認證資訊</p>
         </div>
-      </div>
 
-      <!-- LocalStorage 提示與清除鈕 -->
-      <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-        <span class="flex items-center gap-1">
-          <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
-          自動儲存至 LocalStorage
-        </span>
-        <button onclick="clearCachedCredentials()" class="text-rose-400 hover:underline">清除快取</button>
-      </div>
-    </div>
+        <!-- Wi-Fi 設定表單 -->
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 名稱 (SSID)</label>
+                <input id="wifi-ssid" type="text" placeholder="請輸入 Wi-Fi 名稱"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
+            </div>
 
-    <!-- 連線觸發按鈕 -->
-    <button onclick="startBLEProvisioning()" 
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
+                <div class="relative">
+                    <input id="wifi-pass" type="password" placeholder="請輸入 Wi-Fi 密碼"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm pr-10">
+                    <button type="button" id="toggle-pass-btn" onclick="togglePassVisibility()"
+                        class="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-200">
+                        顯示
+                    </button>
+                </div>
+            </div>
+
+            <!-- LocalStorage 提示與清除鈕 -->
+            <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
+                <span class="flex items-center gap-1">
+                    <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
+                    自動儲存至 LocalStorage
+                </span>
+                <button onclick="clearCachedCredentials()" class="text-rose-400 hover:underline">清除快取</button>
+            </div>
+        </div>
+
+        <!-- 連線觸發按鈕 -->
+        <button onclick="startBLEProvisioning()"
             class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-lg shadow-emerald-900/30">
-      🔍 搜尋並傳送設定至裝置
-    </button>
+            🔍 搜尋並傳送設定至裝置
+        </button>
 
-    <!-- 狀態顯示區域 -->
-    <div id="status-log" class="bg-slate-900/80 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 h-32 overflow-y-auto space-y-1">
-      <div class="text-slate-500">> 等待開始...</div>
+        <!-- 狀態顯示區域 -->
+        <div id="status-log"
+            class="bg-slate-900/80 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 h-32 overflow-y-auto space-y-1">
+            <div class="text-slate-500">> 等待開始...</div>
+        </div>
+
     </div>
 
-  </div>
+    <script>
+        // 引用舊專案驗證成功的 UUID[cite: 1]
+        const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
+        const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1';
 
-  <script>
-    // 引用舊專案驗證成功的 UUID[cite: 1]
-    const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
-    const CHAR_RX_UUID  = '090de95a-079a-42e1-bde7-78f4b98728c1';
-
-    window.addEventListener('DOMContentLoaded', () => {
-      loadCachedCredentials();
-    });
-
-    function log(msg, type = 'info') {
-      const logBox = document.getElementById('status-log');
-      const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
-      let colorClass = 'text-slate-300';
-      if (type === 'success') colorClass = 'text-emerald-400 font-bold';
-      if (type === 'error') colorClass = 'text-rose-400 font-bold';
-      
-      const entry = document.createElement('div');
-      entry.className = colorClass;
-      entry.textContent = `[${time}] ${msg}`;
-      logBox.appendChild(entry);
-      logBox.scrollTop = logBox.scrollHeight;
-    }
-
-    function togglePassVisibility() {
-      const passInput = document.getElementById('wifi-pass');
-      const btn = document.getElementById('toggle-pass-btn');
-      if (passInput.type === 'password') {
-        passInput.type = 'text';
-        btn.textContent = '隱藏';
-      } else {
-        passInput.type = 'password';
-        btn.textContent = '顯示';
-      }
-    }
-
-    function loadCachedCredentials() {
-      const savedSsid = localStorage.getItem('ble_wifi_ssid');
-      const savedPass = localStorage.getItem('ble_wifi_pass');
-      if (savedSsid) document.getElementById('wifi-ssid').value = savedSsid;
-      if (savedPass) document.getElementById('wifi-pass').value = savedPass;
-      if (savedSsid) log('已自動帶入歷史 Wi-Fi 設定。');
-    }
-
-    function saveCredentials(ssid, pass) {
-      localStorage.setItem('ble_wifi_ssid', ssid);
-      localStorage.setItem('ble_wifi_pass', pass);
-    }
-
-    function clearCachedCredentials() {
-      localStorage.removeItem('ble_wifi_ssid');
-      localStorage.removeItem('ble_wifi_pass');
-      document.getElementById('wifi-ssid').value = '';
-      document.getElementById('wifi-pass').value = '';
-      log('已清除 LocalStorage 快取資訊。');
-    }
-
-    async function startBLEProvisioning() {
-      const ssid = document.getElementById('wifi-ssid').value.trim();
-      const pass = document.getElementById('wifi-pass').value.trim();
-
-      if (!ssid) {
-        alert('請先輸入 Wi-Fi 名稱 (SSID)');
-        return;
-      }
-
-      saveCredentials(ssid, pass);
-
-      if (!navigator.bluetooth) {
-        log('您的瀏覽器不支援 Web Bluetooth API。', 'error');
-        return;
-      }
-
-      try {
-        log('正在掃描 BLE 裝置...');
-
-        const device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'DK_AirBed_' }],
-          optionalServices: [SERVICE_UUID]
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCachedCredentials();
         });
 
-        log(`已找到裝置：${device.name}，正在建立 GATT 連線...`);
-        const server = await device.gatt.connect();
+        function log(msg, type = 'info') {
+            const logBox = document.getElementById('status-log');
+            const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+            let colorClass = 'text-slate-300';
+            if (type === 'success') colorClass = 'text-emerald-400 font-bold';
+            if (type === 'error') colorClass = 'text-rose-400 font-bold';
 
-        log('取得 BLE 服務...');
-        const service = await server.getPrimaryService(SERVICE_UUID);
+            const entry = document.createElement('div');
+            entry.className = colorClass;
+            entry.textContent = `[${time}] ${msg}`;
+            logBox.appendChild(entry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
 
-        log('取得 BLE 寫入特徵...');
-        const characteristic = await service.getCharacteristic(CHAR_RX_UUID);
+        function togglePassVisibility() {
+            const passInput = document.getElementById('wifi-pass');
+            const btn = document.getElementById('toggle-pass-btn');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                btn.textContent = '隱藏';
+            } else {
+                passInput.type = 'password';
+                btn.textContent = '顯示';
+            }
+        }
 
-        const encoder = new TextEncoder();
+        function loadCachedCredentials() {
+            const savedSsid = localStorage.getItem('ble_wifi_ssid');
+            const savedPass = localStorage.getItem('ble_wifi_pass');
+            if (savedSsid) document.getElementById('wifi-ssid').value = savedSsid;
+            if (savedPass) document.getElementById('wifi-pass').value = savedPass;
+            if (savedSsid) log('已自動帶入歷史 Wi-Fi 設定。');
+        }
 
-        // 🌟 關鍵修改：改用 writeValueWithoutResponse，完美配合 ESP32 端設定的 WRITE_NO_RSP 屬性
-        log(`正在寫入 SSID: ${ssid}`);
-        await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ ssid: ssid })));
+        function saveCredentials(ssid, pass) {
+            localStorage.setItem('ble_wifi_ssid', ssid);
+            localStorage.setItem('ble_wifi_pass', pass);
+        }
 
-        // 稍作緩衝，避免太快連續發送
-        await new Promise(resolve => setTimeout(resolve, 100));
+        function clearCachedCredentials() {
+            localStorage.removeItem('ble_wifi_ssid');
+            localStorage.removeItem('ble_wifi_pass');
+            document.getElementById('wifi-ssid').value = '';
+            document.getElementById('wifi-pass').value = '';
+            log('已清除 LocalStorage 快取資訊。');
+        }
 
-        log(`正在寫入 Password...`);
-        await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ pw: pass })));
+        async function startBLEProvisioning() {
+            const ssid = document.getElementById('wifi-ssid').value.trim();
+            const pass = document.getElementById('wifi-pass').value.trim();
 
-        log('✅ 傳送成功！Wi-Fi 帳密已寫入裝置。', 'success');
+            if (!ssid) {
+                alert('請先輸入 Wi-Fi 名稱 (SSID)');
+                return;
+            }
 
-        device.gatt.disconnect();
-        log('已安全中斷 BLE 連線。');
+            saveCredentials(ssid, pass);
 
-      } catch (err) {
-        log(`錯誤: ${err.message}`, 'error');
-      }
-    }
-  </script>
+            if (!navigator.bluetooth) {
+                log('您的瀏覽器不支援 Web Bluetooth API。', 'error');
+                return;
+            }
+
+            try {
+                log('正在掃描 BLE 裝置...');
+
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'DK_AirBed_' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                log(`已找到裝置：${device.name}，正在建立 GATT 連線...`);
+                const server = await device.gatt.connect();
+
+                log('取得 BLE 服務...');
+                const service = await server.getPrimaryService(SERVICE_UUID);
+
+                log('取得 BLE 寫入特徵...');
+                const characteristic = await service.getCharacteristic(CHAR_RX_UUID);
+
+                const encoder = new TextEncoder();
+
+                // 🌟 關鍵修改：改用 writeValueWithoutResponse，完美配合 ESP32 端設定的 WRITE_NO_RSP 屬性
+                log(`正在寫入 SSID: ${ssid}`);
+                await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ ssid: ssid })));
+
+                // 稍作緩衝，避免太快連續發送
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                log(`正在寫入 Password...`);
+                await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ pw: pass })));
+
+                log('✅ 傳送成功！Wi-Fi 帳密已寫入裝置。', 'success');
+
+                // 藍牙寫入成功並斷線後
+                device.gatt.disconnect();
+                log('✅ 藍牙傳送成功，正在透過雲端確認裝置上線狀態...', 'success');
+
+                let checkCount = 0;
+                const maxRetries = 15; // 最多檢查 15 次（約 45 秒）
+
+                const cloudPollTimer = setInterval(async () => {
+                    checkCount++;
+                    log(`[${checkCount}/${maxRetries}] 正在向雲端查詢裝置狀態...`);
+
+                    try {
+                        const response = await fetch('https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1/device_status?device_id=eq.DK_AirBed_64EE', {
+                            headers: {
+                                'apikey': '您的_ANON_KEY',
+                                'Authorization': 'Bearer 您的_ANON_KEY'
+                            }
+                        });
+
+                        const rows = await response.json();
+                        if (rows && rows.length > 0) {
+                            if (rows[0].status === 'online') {
+                                log('🎉 裝置已成功連線並上雲！配網圓滿完成！', 'success');
+                                clearInterval(cloudPollTimer);
+                                alert('🎉 配網成功！裝置已連線至網際網路。');
+                                return;
+                            }
+                        }
+
+                        if (checkCount >= maxRetries) {
+                            log('⚠️ 超時：雲端尚未收到裝置的回報，請確認 Wi-Fi 密碼。', 'error');
+                            clearInterval(cloudPollTimer);
+                        }
+                    } catch (err) {
+                        log(`查詢雲端狀態發生錯誤: ${err.message}`, 'error');
+                    }
+                }, 3000);
+
+
+            } catch (err) {
+                log(`錯誤: ${err.message}`, 'error');
+            }
+        }
+    </script>
 </body>
+
 </html>
