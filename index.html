@@ -70,7 +70,7 @@
     </div>
 
     <script>
-        // 引用舊專案驗證成功的 UUID[cite: 1]
+        // 引用專案驗證成功的 UUID[cite: 1]
         const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
         const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1';
 
@@ -160,7 +160,7 @@
 
                 const encoder = new TextEncoder();
 
-                // 🌟 關鍵修改：改用 writeValueWithoutResponse，完美配合 ESP32 端設定的 WRITE_NO_RSP 屬性
+                // 使用 writeValueWithoutResponse 配合 ESP32 的 WRITE_NO_RSP 屬性
                 log(`正在寫入 SSID: ${ssid}`);
                 await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ ssid: ssid })));
 
@@ -172,7 +172,7 @@
 
                 log('✅ 傳送成功！Wi-Fi 帳密已寫入裝置。', 'success');
 
-                // 藍牙寫入成功並斷線後
+                // 藍牙寫入成功並斷線
                 device.gatt.disconnect();
                 log('✅ 藍牙傳送成功，正在透過雲端確認裝置上線狀態...', 'success');
 
@@ -209,7 +209,6 @@
                         log(`查詢雲端狀態發生錯誤: ${err.message}`, 'error');
                     }
                 }, 3000);
-
 
             } catch (err) {
                 log(`錯誤: ${err.message}`, 'error');
