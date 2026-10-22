@@ -25,6 +25,26 @@
             <p class="text-slate-400 text-sm">透過 Web BLE 傳送無線網路認證資訊</p>
         </div>
 
+        <!-- 裝置連線狀態儀表板 (新加入) -->
+        <div class="grid grid-cols-2 gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-700/60">
+            <!-- BLE 狀態 -->
+            <div class="flex items-center space-x-2">
+                <span id="ble-dot" class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                <div>
+                    <div class="text-[10px] text-slate-400 font-medium">藍牙 (BLE)</div>
+                    <div id="ble-status-text" class="text-xs font-bold text-slate-300">未連線</div>
+                </div>
+            </div>
+            <!-- Wi-Fi 狀態 -->
+            <div class="flex items-center space-x-2">
+                <span id="wifi-dot" class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                <div>
+                    <div class="text-[10px] text-slate-400 font-medium">網路 (Wi-Fi/雲端)</div>
+                    <div id="wifi-status-text" class="text-xs font-bold text-slate-300">未連線</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Wi-Fi 設定表單 -->
         <div class="space-y-4">
             <div>
@@ -70,7 +90,7 @@
     </div>
 
     <script>
-        // 引用專案驗證成功的 UUID[cite: 1]
+        // 引用專案驗證成功的 UUID
         const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
         const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1';
 
@@ -90,6 +110,28 @@
             entry.textContent = `[${time}] ${msg}`;
             logBox.appendChild(entry);
             logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // 更新狀態儀表板 UI 的輔助函式
+        function updateConnectionUI(target, status, text) {
+            const dot = document.getElementById(`${target}-dot`);
+            const label = document.getElementById(`${target}-status-text`);
+
+            dot.className = "w-3 h-3 rounded-full inline-block transition-colors";
+            if (status === 'connected') {
+                dot.classList.add('bg-emerald-400', 'shadow-lg', 'shadow-emerald-500/50');
+                label.className = "text-xs font-bold text-emerald-400";
+            } else if (status === 'connecting') {
+                dot.classList.add('bg-amber-400', 'animate-pulse');
+                label.className = "text-xs font-bold text-amber-400";
+            } else if (status === 'error') {
+                dot.classList.add('bg-rose-500');
+                label.className = "text-xs font-bold text-rose-400";
+            } else {
+                dot.classList.add('bg-slate-500');
+                label.className = "text-xs font-bold text-slate-300";
+            }
+            label.textContent = text;
         }
 
         function togglePassVisibility() {
@@ -142,6 +184,7 @@
             }
 
             try {
+                updateConnectionUI('ble', 'connecting', '掃描中...');
                 log('正在掃描 BLE 裝置...');
 
                 const device = await navigator.bluetooth.requestDevice({
@@ -150,7 +193,10 @@
                 });
 
                 log(`已找到裝置：${device.name}，正在建立 GATT 連線...`);
+                updateConnectionUI('ble', 'connecting', '連線中...');
+                
                 const server = await device.gatt.connect();
+                updateConnectionUI('ble', 'connected', '已連線');
 
                 log('取得 BLE 服務...');
                 const service = await server.getPrimaryService(SERVICE_UUID);
@@ -160,22 +206,25 @@
 
                 const encoder = new TextEncoder();
 
-                // 使用 writeValueWithoutResponse 配合 ESP32 的 WRITE_NO_RSP 屬性
+                // 寫入 SSID
                 log(`正在寫入 SSID: ${ssid}`);
                 await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ ssid: ssid })));
 
-                // 稍作緩衝，避免太快連續發送
                 await new Promise(resolve => setTimeout(resolve, 100));
 
+                // 寫入 Password
                 log(`正在寫入 Password...`);
                 await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ pw: pass })));
 
                 log('✅ 傳送成功！Wi-Fi 帳密已寫入裝置。', 'success');
 
-                // 藍牙寫入成功並斷線
+                // 藍牙寫入成功，主動斷開藍牙
                 device.gatt.disconnect();
+                updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
                 log('✅ 藍牙傳送成功，正在透過雲端確認裝置上線狀態...', 'success');
 
+                // 開始檢查雲端 Wi-Fi 狀態
+                updateConnectionUI('wifi', 'connecting', '等待上網...');
                 let checkCount = 0;
                 const maxRetries = 15; // 最多檢查 15 次（約 45 秒）
 
@@ -194,6 +243,7 @@
                         const rows = await response.json();
                         if (rows && rows.length > 0) {
                             if (rows[0].status === 'online') {
+                                updateConnectionUI('wifi', 'connected', 'Wi-Fi 已連線');
                                 log('🎉 裝置已成功連線並上雲！配網圓滿完成！', 'success');
                                 clearInterval(cloudPollTimer);
                                 alert('🎉 配網成功！裝置已連線至網際網路。');
@@ -202,6 +252,7 @@
                         }
 
                         if (checkCount >= maxRetries) {
+                            updateConnectionUI('wifi', 'error', '連線逾時');
                             log('⚠️ 超時：雲端尚未收到裝置的回報，請確認 Wi-Fi 密碼。', 'error');
                             clearInterval(cloudPollTimer);
                         }
@@ -211,6 +262,8 @@
                 }, 3000);
 
             } catch (err) {
+                updateConnectionUI('ble', 'error', '連線失敗');
+                updateConnectionUI('wifi', 'error', '未連線');
                 log(`錯誤: ${err.message}`, 'error');
             }
         }
