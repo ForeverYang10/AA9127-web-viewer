@@ -45,6 +45,12 @@
             </div>
         </div>
 
+        <!-- 最後心跳時間顯示區塊 -->
+        <div class="bg-slate-900/40 px-3 py-2 rounded-lg border border-slate-800 text-xs text-slate-400 flex justify-between items-center">
+            <span id="update-time-text">最後心跳: --</span>
+            <span class="text-[10px] text-slate-500">Asia/Taipei</span>
+        </div>
+
         <!-- Wi-Fi 設定表單 -->
         <div class="space-y-4">
             <div>
@@ -142,7 +148,7 @@
             label.textContent = text;
         }
 
-        // 🌟 核心：結合心跳時間戳（updated_at）的超時離線判斷邏輯
+        // 🌟 核心：結合心跳時間戳（updated_at）的超時離線判斷與時間顯示邏輯
         async function checkDeviceStatus() {
             try {
                 const response = await fetch(SUPABASE_URL, {
@@ -153,10 +159,23 @@
                 });
                 const rows = await response.json();
                 
+                const timeTextEl = document.getElementById('update-time-text');
+
                 if (rows && rows.length > 0) {
                     const device = rows[0];
                     const dbStatus = device.status; // 'online' 或 'offline'
-                    const updatedAt = device.updated_at; // 假設您的資料表有這個時間欄位
+                    const updatedAt = device.updated_at; // 帶有時區的時間戳
+
+                    if (updatedAt) {
+                        // 格式化顯示最後心跳時間（強制轉為台北時區）
+                        const formattedTime = new Date(updatedAt).toLocaleString('zh-TW', {
+                            timeZone: 'Asia/Taipei',
+                            hour12: false
+                        });
+                        timeTextEl.textContent = `最後心跳: ${formattedTime}`;
+                    } else {
+                        timeTextEl.textContent = '最後心跳: 無資料';
+                    }
 
                     if (dbStatus === 'online' && updatedAt) {
                         const lastBeatTime = new Date(updatedAt).getTime();
@@ -174,6 +193,7 @@
                     }
                 } else {
                     updateConnectionUI('wifi', 'error', '無裝置資料');
+                    timeTextEl.textContent = '最後心跳: 無資料';
                 }
             } catch (err) {
                 console.error('狀態查詢失敗', err);
