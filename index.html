@@ -4,31 +4,58 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BLE Wi-Fi Provisioning</title>
+    <title>東庚翻身床 - 智慧監控與配網</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             background-color: #0f172a;
             color: #f8fafc;
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* Custom scrollbar for log box */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
         }
     </style>
 </head>
 
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex flex-col items-center justify-start p-4 md:p-6">
 
-    <div class="max-w-md w-full bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 space-y-6">
+    <div class="max-w-xl w-full bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/80 p-5 md:p-6 space-y-5">
 
-        <!-- 標頭資訊 -->
+        <!-- 頁頭與主標題 -->
         <div class="text-center space-y-1">
-            <h1 class="text-2xl font-bold text-emerald-400">Wi-Fi 配網設定</h1>
-            <p class="text-slate-400 text-sm">透過 Web BLE 傳送無線網路認證資訊</p>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-emerald-400 tracking-wide">東庚翻身床</h1>
+            <p class="text-slate-400 text-xs md:text-sm">智慧翻身照護與即時裝置管理系統</p>
         </div>
 
-        <!-- 裝置連線狀態儀表板 -->
+        <!-- 頂部頁籤導覽 (Tabs) -->
+        <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60">
+            <button id="tab-history-btn" onclick="switchTab('history')"
+                class="flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md">
+                📊 使用歷程
+            </button>
+            <button id="tab-wifi-btn" onclick="switchTab('wifi')"
+                class="flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
+                📶 Wi-Fi 配網
+            </button>
+        </div>
+
+        <!-- 裝置連線狀態儀表板 (公用區塊) -->
         <div class="grid grid-cols-2 gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-700/60">
             <!-- BLE 狀態 -->
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2.5">
                 <span id="ble-dot" class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
                 <div>
                     <div class="text-[10px] text-slate-400 font-medium">藍牙 (BLE)</div>
@@ -36,82 +63,287 @@
                 </div>
             </div>
             <!-- Wi-Fi 雲端狀態 -->
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2.5">
                 <span id="wifi-dot" class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
                 <div>
-                    <div class="text-[10px] text-slate-400 font-medium">裝置狀態</div>
+                    <div class="text-[10px] text-slate-400 font-medium">雲端狀態</div>
                     <div id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</div>
                 </div>
             </div>
         </div>
 
-        <!-- 最後心跳時間顯示區塊 -->
-        <div class="bg-slate-900/40 px-3 py-2 rounded-lg border border-slate-800 text-xs text-slate-400 flex justify-between items-center">
+        <!-- 最後心跳時間區塊 -->
+        <div class="bg-slate-900/40 px-3.5 py-2 rounded-lg border border-slate-800 text-xs text-slate-400 flex justify-between items-center">
             <span id="update-time-text">最後心跳: --</span>
-            <span class="text-[10px] text-slate-500">Asia/Taipei</span>
+            <span class="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Asia/Taipei</span>
         </div>
 
-        <!-- Wi-Fi 設定表單 -->
-        <div class="space-y-4">
-            <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 名稱 (SSID)</label>
-                <input id="wifi-ssid" type="text" placeholder="請輸入 Wi-Fi 名稱"
-                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
-                <div class="relative">
-                    <input id="wifi-pass" type="password" placeholder="請輸入 Wi-Fi 密碼"
-                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm pr-10">
-                    <button type="button" id="toggle-pass-btn" onclick="togglePassVisibility()"
-                        class="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-200">
-                        顯示
-                    </button>
+        <!-- ==================== VIEW 1: 使用歷程 (Main History Dashboard) ==================== -->
+        <div id="view-history" class="space-y-5">
+            
+            <!-- 時間範圍切換選單 -->
+            <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded-lg border border-slate-800">
+                <span class="text-xs font-semibold text-slate-300 px-2">統計時間區間</span>
+                <div class="flex gap-1 text-xs">
+                    <button id="range-today" onclick="setRange('today')" class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
+                    <button id="range-weekly" onclick="setRange('weekly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">每週</button>
+                    <button id="range-monthly" onclick="setRange('monthly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">每月</button>
                 </div>
             </div>
 
-            <!-- LocalStorage 提示與清除鈕 -->
-            <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-                <span class="flex items-center gap-1">
-                    <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
-                    自動儲存至 LocalStorage
-                </span>
-                <button onclick="clearCachedCredentials()" class="text-rose-400 hover:underline">清除快取</button>
+            <!-- 圖表卡片區塊 -->
+            <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 flex flex-col items-center space-y-3">
+                <div class="w-full flex justify-between items-center text-xs text-slate-400">
+                    <span id="chart-title" class="font-bold text-slate-200">24小時翻身時段分佈 (00:00 - 24:00)</span>
+                    <span id="chart-unit" class="text-[11px] text-slate-500">單位：小時</span>
+                </div>
+
+                <!-- 圓餅 / 環形圖 Canvas -->
+                <div class="relative w-48 h-48 sm:w-56 sm:h-56 my-2">
+                    <canvas id="usageChart"></canvas>
+                </div>
+
+                <div id="chart-legend-custom" class="flex flex-wrap justify-center gap-3 text-[11px] text-slate-300 pt-1">
+                    <!-- 自動由 JS 填入 Legend -->
+                </div>
             </div>
+
+            <!-- 關鍵統計數據卡片 (3欄) -->
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 text-center space-y-1">
+                    <div class="text-[10px] sm:text-xs text-slate-400">累積運作時間</div>
+                    <div id="metric-total-time" class="text-sm sm:text-base font-extrabold text-emerald-400">6.5 <span class="text-[10px] font-normal text-slate-400">小時</span></div>
+                </div>
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 text-center space-y-1">
+                    <div class="text-[10px] sm:text-xs text-slate-400">翻身執行次數</div>
+                    <div id="metric-turn-count" class="text-sm sm:text-base font-extrabold text-cyan-400">14 <span class="text-[10px] font-normal text-slate-400">次</span></div>
+                </div>
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 text-center space-y-1">
+                    <div class="text-[10px] sm:text-xs text-slate-400">平均翻身週期</div>
+                    <div id="metric-avg-interval" class="text-sm sm:text-base font-extrabold text-amber-400">45 <span class="text-[10px] font-normal text-slate-400">分鐘</span></div>
+                </div>
+            </div>
+
         </div>
 
-        <!-- 連線觸發按鈕 -->
-        <button onclick="startBLEProvisioning()"
-            class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-lg shadow-emerald-900/30">
-            🔍 搜尋並傳送設定至裝置
-        </button>
+        <!-- ==================== VIEW 2: Wi-Fi 配網選單 (BLE Provisioning) ==================== -->
+        <div id="view-wifi" class="space-y-4 hidden">
+            
+            <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                <div class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10 10 0 0114.142 0M2.828 9.9a15 15 0 0120.344 0"></path></svg>
+                    發送 Wi-Fi 憑證至翻身床裝置
+                </div>
 
-        <!-- 狀態顯示區域 -->
-        <div id="status-log"
-            class="bg-slate-900/80 rounded-lg p-3 text-xs font-mono text-slate-300 border border-slate-800 h-32 overflow-y-auto space-y-1">
-            <div class="text-slate-500">> 等待開始...</div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 名稱 (SSID)</label>
+                    <input id="wifi-ssid" type="text" placeholder="請輸入無線網路名稱"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
+                    <div class="relative">
+                        <input id="wifi-pass" type="password" placeholder="請輸入無線網路密碼"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm pr-12">
+                        <button type="button" id="toggle-pass-btn" onclick="togglePassVisibility()"
+                            class="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-200">
+                            顯示
+                        </button>
+                    </div>
+                </div>
+
+                <!-- LocalStorage 提示與清除鈕 -->
+                <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
+                    <span class="flex items-center gap-1.5 text-[11px]">
+                        <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        已啟用 LocalStorage 自動快速帶入
+                    </span>
+                    <button onclick="clearCachedCredentials()" class="text-rose-400 hover:underline text-[11px]">清除快取</button>
+                </div>
+            </div>
+
+            <!-- 連線觸發按鈕 -->
+            <button onclick="startBLEProvisioning()"
+                class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 text-sm">
+                <span>🔍 搜尋並傳送設定至東庚翻身床</span>
+            </button>
+
+            <!-- 藍牙通訊狀態 Log Logbox -->
+            <div class="space-y-1">
+                <div class="text-[11px] text-slate-400 font-medium px-1">傳送狀態紀錄：</div>
+                <div id="status-log"
+                    class="bg-slate-900/90 rounded-xl p-3 text-xs font-mono text-slate-300 border border-slate-800 h-28 overflow-y-auto space-y-1">
+                    <div class="text-slate-500">> 系統就緒，等待開始配網...</div>
+                </div>
+            </div>
+
         </div>
 
     </div>
 
+    <!-- 腳本邏輯 -->
     <script>
+        // BLE 相關 UUID 與連線參數
         const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
         const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1';
 
+        // Supabase REST Endpoint
         const SUPABASE_URL = 'https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1/device_status?device_id=eq.DK_AirBed_64EE';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
 
-        // 定期背景檢查狀態的計時器變數
         let statusInterval = null;
+        let usageChartInstance = null;
+        let currentRange = 'today';
+
+        // 模擬使用歷程資料集 (可無縫接入 Supabase 歷程 API)
+        const mockUsageData = {
+            today: {
+                title: '24小時翻身時段分佈 (00:00 - 24:00)',
+                labels: ['夜間自動翻身 (00-08)', '日間定時翻身 (08-16)', '傍晚減壓護理 (16-24)', '待機/靜止狀態'],
+                datasets: [3.5, 2.0, 1.0, 17.5], // 總合 24 小時
+                bgColors: ['#10b981', '#06b6d4', '#f59e0b', '#334155'],
+                totalHours: '6.5',
+                turnCount: '14',
+                avgInterval: '45'
+            },
+            weekly: {
+                title: '本週各時段翻身運作累計',
+                labels: ['日間自動翻身', '夜間減壓模式', '手動調整模式', '靜止待機'],
+                datasets: [22.0, 24.5, 5.5, 116.0], // 總合 168 小時
+                bgColors: ['#06b6d4', '#10b981', '#f59e0b', '#334155'],
+                totalHours: '52.0',
+                turnCount: '98',
+                avgInterval: '50'
+            },
+            monthly: {
+                title: '本月翻身護理統計分佈',
+                labels: ['自動定期翻身', '夜間強化防褥', '手動協助翻身', '待機靜止'],
+                datasets: [90.0, 110.0, 20.0, 500.0], // 總合 720 小時
+                bgColors: ['#10b981', '#6366f1', '#f59e0b', '#334155'],
+                totalHours: '220.0',
+                turnCount: '412',
+                avgInterval: '48'
+            }
+        };
 
         window.addEventListener('DOMContentLoaded', () => {
             loadCachedCredentials();
-            checkDeviceStatus(); // 載入時立即檢查一次
-            
-            // 每 10 秒自動背景輪詢一次 Supabase，實時更新線上/離線狀態
+            checkDeviceStatus();
+            initChart();
+
+            // 每 10 秒定期更新 Supabase 雲端心跳狀態
             statusInterval = setInterval(checkDeviceStatus, 10000);
         });
+
+        // 頁籤切換邏輯 (Tab Switching)
+        function switchTab(tabName) {
+            const historyView = document.getElementById('view-history');
+            const wifiView = document.getElementById('view-wifi');
+            const historyBtn = document.getElementById('tab-history-btn');
+            const wifiBtn = document.getElementById('tab-wifi-btn');
+
+            if (tabName === 'history') {
+                historyView.classList.remove('hidden');
+                wifiView.classList.add('hidden');
+                
+                historyBtn.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
+                wifiBtn.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+            } else {
+                historyView.classList.add('hidden');
+                wifiView.classList.remove('hidden');
+
+                wifiBtn.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
+                historyBtn.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+            }
+        }
+
+        // 時間區間切換 (Today / Weekly / Monthly)
+        function setRange(range) {
+            currentRange = range;
+            ['today', 'weekly', 'monthly'].forEach(r => {
+                const btn = document.getElementById(`range-${r}`);
+                if (r === range) {
+                    btn.className = "px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                } else {
+                    btn.className = "px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800";
+                }
+            });
+
+            updateChartData(range);
+        }
+
+        // 初始化 Chart.js 圓餅圖
+        function initChart() {
+            const ctx = document.getElementById('usageChart').getContext('2d');
+            const dataConfig = mockUsageData.today;
+
+            usageChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: dataConfig.labels,
+                    datasets: [{
+                        data: dataConfig.datasets,
+                        backgroundColor: dataConfig.bgColors,
+                        borderWidth: 2,
+                        borderColor: '#0f172a'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            display: false // 使用自訂 Legend 以符合 Dark UI
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${context.raw} 小時`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            renderCustomLegend(dataConfig);
+        }
+
+        // 更新圖表與統計數字
+        function updateChartData(range) {
+            const dataConfig = mockUsageData[range];
+            
+            document.getElementById('chart-title').textContent = dataConfig.title;
+            document.getElementById('metric-total-time').innerHTML = `${dataConfig.totalHours} <span class="text-[10px] font-normal text-slate-400">小時</span>`;
+            document.getElementById('metric-turn-count').innerHTML = `${dataConfig.turnCount} <span class="text-[10px] font-normal text-slate-400">次</span>`;
+            document.getElementById('metric-avg-interval').innerHTML = `${dataConfig.avgInterval} <span class="text-[10px] font-normal text-slate-400">分鐘</span>`;
+
+            if (usageChartInstance) {
+                usageChartInstance.data.labels = dataConfig.labels;
+                usageChartInstance.data.datasets[0].data = dataConfig.datasets;
+                usageChartInstance.data.datasets[0].backgroundColor = dataConfig.bgColors;
+                usageChartInstance.update();
+            }
+
+            renderCustomLegend(dataConfig);
+        }
+
+        // 自訂渲染 Legend 標籤
+        function renderCustomLegend(config) {
+            const legendBox = document.getElementById('chart-legend-custom');
+            legendBox.innerHTML = '';
+            config.labels.forEach((label, idx) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-1.5';
+                item.innerHTML = `
+                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${config.bgColors[idx]}"></span>
+                    <span>${label} (${config.datasets[idx]}h)</span>
+                `;
+                legendBox.appendChild(item);
+            });
+        }
 
         function log(msg, type = 'info') {
             const logBox = document.getElementById('status-log');
@@ -148,7 +380,7 @@
             label.textContent = text;
         }
 
-        // 🌟 核心：修正時區偏移判斷與最後心跳時間顯示邏輯
+        // Supabase 雲端心跳判斷 (40s 超時檢測 + 台北時區)
         async function checkDeviceStatus() {
             try {
                 const response = await fetch(SUPABASE_URL, {
@@ -163,17 +395,15 @@
 
                 if (rows && rows.length > 0) {
                     const device = rows[0];
-                    const dbStatus = device.status; // 'online' 或 'offline'
-                    const updatedAt = device.updated_at; // 資料庫時間戳
+                    const dbStatus = device.status;
+                    const updatedAt = device.updated_at;
 
                     if (updatedAt) {
-                        // 確保時間字串包含明確時區標示（避免未指定時區時被瀏覽器誤判定為本地時間）
                         let isoTimeString = updatedAt;
                         if (!isoTimeString.endsWith('Z') && !isoTimeString.includes('+') && !isoTimeString.includes('-', 10)) {
                             isoTimeString += 'Z';
                         }
 
-                        // 格式化顯示最後心跳時間（強制轉換為台北時區格式）
                         const formattedTime = new Date(isoTimeString).toLocaleString('zh-TW', {
                             timeZone: 'Asia/Taipei',
                             hour12: false
@@ -185,7 +415,7 @@
                             const now = new Date().getTime();
                             const diffSeconds = (now - lastBeatTime) / 1000;
 
-                            // 🔴 超時機制：如果超過 40 秒沒有更新心跳，即使資料庫寫 online 也強制判定為離線
+                            // 40 秒超時機制判定
                             if (diffSeconds > 40) {
                                 updateConnectionUI('wifi', 'error', '裝置離線(逾時)');
                             } else {
@@ -224,7 +454,7 @@
             const savedPass = localStorage.getItem('ble_wifi_pass');
             if (savedSsid) document.getElementById('wifi-ssid').value = savedSsid;
             if (savedPass) document.getElementById('wifi-pass').value = savedPass;
-            if (savedSsid) log('已自動帶入歷史 Wi-Fi 設定。');
+            if (savedSsid) log('已自動載入已快取的 Wi-Fi 設定。');
         }
 
         function saveCredentials(ssid, pass) {
@@ -237,44 +467,45 @@
             localStorage.removeItem('ble_wifi_pass');
             document.getElementById('wifi-ssid').value = '';
             document.getElementById('wifi-pass').value = '';
-            log('已清除 LocalStorage 快取資訊。');
+            log('已清除本地快取資訊。');
         }
 
+        // Web BLE 配網流程
         async function startBLEProvisioning() {
             const ssid = document.getElementById('wifi-ssid').value.trim();
             const pass = document.getElementById('wifi-pass').value.trim();
 
             if (!ssid) {
-                alert('請先輸入 Wi-Fi 名稱 (SSID)');
+                log('請先輸入 Wi-Fi 名稱 (SSID)', 'error');
                 return;
             }
 
             saveCredentials(ssid, pass);
 
             if (!navigator.bluetooth) {
-                log('Your browser does not support Web Bluetooth API.', 'error');
+                log('目前瀏覽器不支援 Web Bluetooth API。', 'error');
                 return;
             }
 
             try {
                 updateConnectionUI('ble', 'connecting', '掃描中...');
-                log('正在掃描 BLE 裝置...');
+                log('正在掃描東庚翻身床裝置 (DK_AirBed_)...');
 
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'DK_AirBed_' }],
                     optionalServices: [SERVICE_UUID]
                 });
 
-                log(`已找到裝置：${device.name}，正在建立 GATT 連線...`);
+                log(`已配對裝置：${device.name}，正在建立 GATT 連線...`);
                 updateConnectionUI('ble', 'connecting', '連線中...');
 
                 const server = await device.gatt.connect();
                 updateConnectionUI('ble', 'connected', '藍牙已連線');
 
-                log('取得 BLE 服務...');
+                log('取得 BLE 通訊服務...');
                 const service = await server.getPrimaryService(SERVICE_UUID);
 
-                log('取得 BLE 寫入特徵...');
+                log('取得 BLE 寫入特徵碼...');
                 const characteristic = await service.getCharacteristic(CHAR_RX_UUID);
 
                 const encoder = new TextEncoder();
@@ -287,16 +518,16 @@
                 log(`正在寫入 Password...`);
                 await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ pw: pass })));
 
-                log('✅ 傳送成功！Wi-Fi 帳密已寫入裝置。', 'success');
+                log('✅ 憑證傳送成功！Wi-Fi 資訊已成功寫入裝置。', 'success');
 
                 device.gatt.disconnect();
                 updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
-                log('✅ 藍牙傳送成功，正在等待裝置連線上雲...', 'success');
+                log('✅ 藍牙離線，正等待裝置重連至雲端伺服器...', 'success');
 
                 updateConnectionUI('wifi', 'connecting', '等待上線...');
 
             } catch (err) {
-                updateConnectionUI('ble', 'error', '連線失敗');
+                updateConnectionUI('ble', 'error', '連线失敗');
                 log(`錯誤: ${err.message}`, 'error');
             }
         }
