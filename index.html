@@ -56,7 +56,7 @@
             </form>
 
             <div class="text-center">
-                <p class="text-[11px] text-slate-500">提示：輸入帳號僅用於篩選專屬翻身床，無須密碼認證</p>
+                <p class="text-[11px] text-slate-500">提示：輸入帳號將自動註冊開通，無須密碼認證</p>
             </div>
         </div>
     </div>
@@ -107,8 +107,8 @@
         <div class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 space-y-2">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    <span id="current-device-name" class="text-xs sm:text-sm font-bold text-slate-200">DK_AirBed_64EE</span>
-                    <span id="current-device-location" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">主臥室 A 床</span>
+                    <span id="current-device-name" class="text-xs sm:text-sm font-bold text-slate-200">未選擇裝置</span>
+                    <span id="current-device-location" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">請配對翻身床</span>
                 </div>
                 <div class="flex items-center space-x-2">
                     <span id="wifi-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
@@ -134,7 +134,7 @@
                 </div>
             </div>
 
-            <!-- 關鍵統計數據卡片 (主要聚焦：左側翻身 vs 右側翻身) -->
+            <!-- 關鍵統計數據卡片 -->
             <div class="grid grid-cols-2 gap-3">
                 <div class="bg-slate-900/70 p-3.5 rounded-xl border border-sky-500/30 text-center space-y-1">
                     <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
@@ -275,8 +275,8 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
 
         let currentAccountId = '';
-        let currentDeviceId = 'DK_AirBed_64EE';
-        let currentDeviceLabel = '主臥室 A 床';
+        let currentDeviceId = '';
+        let currentDeviceLabel = '';
         let statusInterval = null;
         let usageChartInstance = null;
         let currentRange = 'today';
@@ -337,17 +337,69 @@
             }
         }
 
-        // 登入表單處理：輸入代碼後直接開通，不預設綁定床位
+        // 登入表單處理：輸入代號即刻向 Supabase 寫入初始化紀錄（不綁定任何實體裝置）
         async function handleLogin(e) {
             e.preventDefault();
+            console.log("👉 handleLogin 被觸發了！");
+
             const inputVal = document.getElementById('input-account-id').value.trim();
             if (!inputVal) return;
 
             currentAccountId = inputVal;
             localStorage.setItem('bed_account_id', currentAccountId);
-            document.getElementById('login-overlay').classList.add('hidden');
+            console.log("👉 目前設定的使用者 ID:", currentAccountId);
             
+            // 立即向 Supabase 寫入/確保該使用者 ID 存在（帶有完整 console log 追蹤）
+            await ensureUserRegisteredInSupabase(currentAccountId);
+
+            document.getElementById('login-overlay').classList.add('hidden');
             updateAccountUI();
+        }
+
+        // 確保使用者代碼寫入資料庫而不預設綁定線上裝置
+        async function ensureUserRegisteredInSupabase(accountId) {
+            try {
+                console.log(`[Supabase] 檢查帳號是否存在: ${accountId}`);
+                const checkUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(accountId)}`;
+                const checkRes = await fetch(checkUrl, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                const existingRows = await checkRes.json();
+                console.log(`[Supabase] 查詢結果:`, existingRows);
+
+                if (!existingRows || existingRows.length === 0) {
+                    console.log(`[Supabase] 帳號不存在，嘗試寫入 UNBOUND 初始化紀錄...`);
+                    
+                    const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({
+                            user_account: accountId,
+                            device_id: 'UNBOUND' // 初始化標記，不預設綁定實體床位
+                        })
+                    });
+
+                    const resData = await response.json();
+                    if (response.ok) {
+                        console.log(`✅ [Supabase] 成功開通新使用者:`, resData);
+                    } else {
+                        console.error(`❌ [Supabase] 寫入被拒絕 (HTTP ${response.status}):`, resData);
+                    }
+                } else {
+                    console.log(`ℹ️ [Supabase] 帳號已存在，跳過初始化步驟。`);
+                }
+            } catch (err) {
+                console.error('❌ [Supabase] 網路或系統例外錯誤:', err);
+            }
         }
 
         // 切換帳號按鈕事件
@@ -366,7 +418,7 @@
             checkDeviceStatus();
         }
 
-        // 查詢當前帳號綁定的所有裝置
+        // 查詢當前帳號綁定的所有裝置（排除初始化用的 UNBOUND 標記）
         async function fetchUserDevicesFromSupabase() {
             const container = document.getElementById('device-list-container');
             container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
@@ -382,8 +434,11 @@
 
                 const rows = await response.json();
 
-                if (response.ok && rows && rows.length > 0) {
-                    userDevicesList = rows.map(r => {
+                // 過濾掉未綁定的 UNBOUND 紀錄
+                const validRows = rows ? rows.filter(r => r.device_id !== 'UNBOUND' && r.device_id) : [];
+
+                if (response.ok && validRows.length > 0) {
+                    userDevicesList = validRows.map(r => {
                         const statusObj = r.device_status || {};
                         return {
                             id: r.device_id,
@@ -398,8 +453,11 @@
                         selectDevice(first.id, first.name);
                     }
                 } else {
-                    // 若新帳號尚無任何綁定裝置，保持空陣列，引導至配網設定
                     userDevicesList = [];
+                    currentDeviceId = '';
+                    document.getElementById('current-device-name').textContent = '未選擇裝置';
+                    document.getElementById('current-device-location').textContent = '請配對翻身床';
+                    
                     container.innerHTML = `
                         <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800 text-center space-y-3">
                             <div class="text-amber-400 text-sm font-semibold">目前尚無綁定任何翻身床</div>
@@ -621,6 +679,12 @@
 
         // Supabase 動態心跳查詢
         async function checkDeviceStatus() {
+            if (!currentDeviceId) {
+                updateConnectionUI('wifi', 'error', '未選取裝置');
+                document.getElementById('update-time-text').textContent = '最後心跳: --';
+                return;
+            }
+
             try {
                 const url = `${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(currentDeviceId)}`;
                 const response = await fetch(url, {
@@ -706,7 +770,7 @@
             log('已清除本地快取資訊。');
         }
 
-        // Web BLE 配網流程 + 成功後自動寫入 Supabase user_devices 綁定
+        // Web BLE 配網流程 + 成功後自動寫入 Supabase user_devices 真實綁定
         async function startBLEProvisioning() {
             const ssid = document.getElementById('wifi-ssid').value.trim();
             const pass = document.getElementById('wifi-pass').value.trim();
@@ -733,7 +797,7 @@
                     optionalServices: [SERVICE_UUID]
                 });
 
-                const discoveredDeviceId = device.name; // 例如 DK_AirBed_64EE
+                const discoveredDeviceId = device.name;
                 log(`已配對裝置：${discoveredDeviceId}，正在建立 GATT 連線...`);
                 updateConnectionUI('ble', 'connecting', '連線中...');
 
@@ -757,8 +821,8 @@
                 device.gatt.disconnect();
                 updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
 
-                // 核心實作：配網成功後，自動將該裝置註冊綁定至目前使用者之下
-                log(`正在將裝置 ${discoveredDeviceId} 綁定至帳號 ${currentAccountId}...`);
+                // 將真實配對成功的裝置寫入 Supabase 綁定
+                log(`正在將真實裝置 ${discoveredDeviceId} 綁定至帳號 ${currentAccountId}...`);
                 await registerDeviceToUser(currentAccountId, discoveredDeviceId);
 
             } catch (err) {
@@ -767,7 +831,7 @@
             }
         }
 
-        // 向 Supabase 寫入 user_devices 關聯
+        // 向 Supabase 寫入真實的 user_devices 關聯
         async function registerDeviceToUser(accountId, deviceId) {
             try {
                 const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
@@ -787,7 +851,6 @@
                 if (response.ok || response.status === 201 || response.status === 204) {
                     log(`✅ 裝置 ${deviceId} 成功綁定至您的帳號！`, 'success');
                     selectDevice(deviceId, deviceId);
-                    // 重新抓取一次裝置清單並切換到裝置清單頁籤
                     await fetchUserDevicesFromSupabase();
                     switchTab('devices');
                 } else {
