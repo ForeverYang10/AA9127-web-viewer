@@ -325,19 +325,20 @@
             statusInterval = setInterval(checkDeviceStatus, 10000);
         });
 
-        // 登入狀態檢查
+        // 登入狀態檢查：若未登入或無有效帳號，強制跳出登入蓋層
         function checkLoginState() {
             const savedAccount = localStorage.getItem('bed_account_id');
-            if (savedAccount) {
+            if (savedAccount && savedAccount.trim() !== '') {
                 currentAccountId = savedAccount;
                 document.getElementById('login-overlay').classList.add('hidden');
                 updateAccountUI();
             } else {
+                currentAccountId = '';
                 document.getElementById('login-overlay').classList.remove('hidden');
             }
         }
 
-        // 登入表單處理：輸入代號即刻向 Supabase 寫入初始化紀錄（不綁定任何實體裝置）
+        // 登入表單處理：輸入代號即刻向 Supabase 寫入初始化紀錄
         async function handleLogin(e) {
             e.preventDefault();
             console.log("👉 handleLogin 被觸發了！");
@@ -402,10 +403,11 @@
             }
         }
 
-        // 切換帳號按鈕事件
+        // 切換帳號按鈕事件：清除快取並強制顯示登入對話框
         function switchAccount() {
             localStorage.removeItem('bed_account_id');
-            document.getElementById('input-account-id').value = currentAccountId;
+            currentAccountId = '';
+            document.getElementById('input-account-id').value = '';
             document.getElementById('login-overlay').classList.remove('hidden');
         }
 
@@ -424,7 +426,6 @@
             container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
 
             try {
-                // 1. 單獨查詢 user_devices 表的 device_id，避免 JOIN 造成 400 Bad Request
                 const url = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&select=device_id`;
                 const response = await fetch(url, {
                     headers: {
@@ -443,7 +444,6 @@
                     userDevicesList = [];
                     for (const r of validRows) {
                         const devId = r.device_id;
-                        // 2. 獨立查詢各裝置狀態
                         const statusUrl = `${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(devId)}`;
                         const statusRes = await fetch(statusUrl, {
                             headers: {
