@@ -20,9 +20,11 @@
         ::-webkit-scrollbar {
             width: 6px;
         }
+
         ::-webkit-scrollbar-track {
             background: #0f172a;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #334155;
             border-radius: 3px;
@@ -33,10 +35,12 @@
 <body class="min-h-screen flex flex-col items-center justify-start p-3 sm:p-4 md:p-6">
 
     <!-- 1. 帳號登入蓋層 (Overlay Login Portal) -->
-    <div id="login-overlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div id="login-overlay"
+        class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div class="text-center space-y-2">
-                <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 font-bold text-2xl mx-auto mb-3">
+                <div
+                    class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 font-bold text-2xl mx-auto mb-3">
                     🛏️
                 </div>
                 <h2 class="text-2xl font-extrabold text-emerald-400">東庚翻身床</h2>
@@ -62,12 +66,15 @@
     </div>
 
     <!-- 主頁面容器 -->
-    <div class="max-w-xl w-full bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/80 p-4 sm:p-5 md:p-6 space-y-5">
+    <div
+        class="max-w-xl w-full bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/80 p-4 sm:p-5 md:p-6 space-y-5">
 
         <!-- 頂部帳號與裝置狀態列 -->
-        <div class="flex items-center justify-between bg-slate-900/80 p-2.5 sm:p-3 rounded-xl border border-slate-700/60">
+        <div
+            class="flex items-center justify-between bg-slate-900/80 p-2.5 sm:p-3 rounded-xl border border-slate-700/60">
             <div class="flex items-center space-x-2.5">
-                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-base">
+                <div
+                    class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-base">
                     👤
                 </div>
                 <div>
@@ -75,10 +82,16 @@
                     <div id="display-account-id" class="text-xs font-bold text-emerald-400">未登入</div>
                 </div>
             </div>
-            <button onclick="switchAccount()"
-                class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
-                <span>🔄 切換帳號</span>
-            </button>
+            <div class="flex items-center space-x-1.5">
+                <button onclick="switchAccount()"
+                    class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+                    <span>🔄 切換</span>
+                </button>
+                <button onclick="deleteCurrentAccount()"
+                    class="bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/60 text-rose-300 hover:text-rose-200 px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+                    <span>🗑️ 刪除帳戶</span>
+                </button>
+            </div>
         </div>
 
         <!-- 頁頭與主標題 -->
@@ -108,10 +121,12 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <span id="current-device-name" class="text-xs sm:text-sm font-bold text-slate-200">未選擇裝置</span>
-                    <span id="current-device-location" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">請配對翻身床</span>
+                    <span id="current-device-location"
+                        class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">請配對翻身床</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <span id="wifi-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                    <span id="wifi-dot"
+                        class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
                     <span id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</span>
                 </div>
             </div>
@@ -123,14 +138,17 @@
 
         <!-- ==================== VIEW 1: 使用歷程 (Main History Dashboard) ==================== -->
         <div id="view-history" class="space-y-4">
-            
+
             <!-- 時間範圍切換選單 -->
             <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded-lg border border-slate-800">
                 <span class="text-xs font-semibold text-slate-300 px-2">統計時間區間</span>
                 <div class="flex gap-1 text-xs">
-                    <button id="range-today" onclick="setRange('today')" class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
-                    <button id="range-weekly" onclick="setRange('weekly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
-                    <button id="range-monthly" onclick="setRange('monthly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
+                    <button id="range-today" onclick="setRange('today')"
+                        class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
+                    <button id="range-weekly" onclick="setRange('weekly')"
+                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
+                    <button id="range-monthly" onclick="setRange('monthly')"
+                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
                 </div>
             </div>
 
@@ -140,7 +158,8 @@
                     <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
                         <span>👈 左側翻身協助</span>
                     </div>
-                    <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span class="text-xs font-normal text-slate-400">小時</span></div>
+                    <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span
+                            class="text-xs font-normal text-slate-400">小時</span></div>
                     <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次 (固定週期)</div>
                 </div>
 
@@ -148,7 +167,8 @@
                     <div class="text-xs text-indigo-400 font-semibold flex items-center justify-center gap-1">
                         <span>👉 右側翻身協助</span>
                     </div>
-                    <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span class="text-xs font-normal text-slate-400">小時</span></div>
+                    <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span
+                            class="text-xs font-normal text-slate-400">小時</span></div>
                     <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次 (固定週期)</div>
                 </div>
             </div>
@@ -165,7 +185,8 @@
                     <canvas id="usageChart"></canvas>
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span class="text-[10px] text-slate-400">協助運作總時數</span>
-                        <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0 h</span>
+                        <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0
+                            h</span>
                     </div>
                 </div>
 
@@ -187,9 +208,11 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-bold text-slate-200">名下綁定翻身床</h2>
-                    <p class="text-[11px] text-slate-400">帳號 <span id="device-tab-account-id" class="text-emerald-400 font-mono">--</span> 專屬之裝置</p>
+                    <p class="text-[11px] text-slate-400">帳號 <span id="device-tab-account-id"
+                            class="text-emerald-400 font-mono">--</span> 專屬之裝置</p>
                 </div>
-                <button onclick="fetchUserDevicesFromSupabase()" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                <button onclick="fetchUserDevicesFromSupabase()"
+                    class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
                     <span>🔄 重新整理</span>
                 </button>
             </div>
@@ -202,10 +225,14 @@
 
         <!-- ==================== VIEW 3: Wi-Fi 配網選單 (BLE Provisioning) ==================== -->
         <div id="view-wifi" class="space-y-4 hidden">
-            
+
             <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
                 <div class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10 10 0 0114.142 0M2.828 9.9a15 15 0 0120.344 0"></path></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10 10 0 0114.142 0M2.828 9.9a15 15 0 0120.344 0">
+                        </path>
+                    </svg>
                     發送 Wi-Fi 憑證至目標翻身床
                 </div>
 
@@ -232,14 +259,17 @@
                         <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
                         已啟用 LocalStorage 快取帶入
                     </span>
-                    <button onclick="clearCachedCredentials()" class="text-rose-400 hover:underline text-[11px]">清除快取</button>
+                    <button onclick="clearCachedCredentials()"
+                        class="text-rose-400 hover:underline text-[11px]">清除快取</button>
                 </div>
             </div>
 
             <!-- 藍牙 BLE 連線狀態 -->
-            <div class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+            <div
+                class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
                 <div class="flex items-center space-x-2">
-                    <span id="ble-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                    <span id="ble-dot"
+                        class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
                     <span id="ble-status-text" class="font-bold text-slate-300">藍牙未連線</span>
                 </div>
                 <span id="target-ble-device" class="text-[10px] text-slate-500 font-mono">目標: 掃描中自動抓取</span>
@@ -325,7 +355,7 @@
             statusInterval = setInterval(checkDeviceStatus, 10000);
         });
 
-        // 登入狀態檢查：若未登入或無有效帳號，強制跳出登入蓋層
+        // 登入狀態檢查
         function checkLoginState() {
             const savedAccount = localStorage.getItem('bed_account_id');
             if (savedAccount && savedAccount.trim() !== '') {
@@ -338,29 +368,24 @@
             }
         }
 
-        // 登入表單處理：輸入代號即刻向 Supabase 寫入初始化紀錄
+        // 登入表單處理
         async function handleLogin(e) {
             e.preventDefault();
-            console.log("👉 handleLogin 被觸發了！");
-
             const inputVal = document.getElementById('input-account-id').value.trim();
             if (!inputVal) return;
 
             currentAccountId = inputVal;
             localStorage.setItem('bed_account_id', currentAccountId);
-            console.log("👉 目前設定的使用者 ID:", currentAccountId);
-            
-            // 立即向 Supabase 寫入/確保該使用者 ID 存在
+
             await ensureUserRegisteredInSupabase(currentAccountId);
 
             document.getElementById('login-overlay').classList.add('hidden');
             updateAccountUI();
         }
 
-        // 確保使用者代碼寫入資料庫而不預設綁定線上裝置
+        // 確保使用者代碼寫入資料庫
         async function ensureUserRegisteredInSupabase(accountId) {
             try {
-                console.log(`[Supabase] 檢查帳號是否存在: ${accountId}`);
                 const checkUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(accountId)}`;
                 const checkRes = await fetch(checkUrl, {
                     headers: {
@@ -368,14 +393,11 @@
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
-                
+
                 const existingRows = await checkRes.json();
-                console.log(`[Supabase] 查詢結果:`, existingRows);
 
                 if (!existingRows || existingRows.length === 0) {
-                    console.log(`[Supabase] 帳號不存在，嘗試寫入 UNBOUND 初始化紀錄...`);
-                    
-                    const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
+                    await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
                         method: 'POST',
                         headers: {
                             'apikey': SUPABASE_ANON_KEY,
@@ -388,22 +410,13 @@
                             device_id: 'UNBOUND'
                         })
                     });
-
-                    const resData = await response.json();
-                    if (response.ok) {
-                        console.log(`✅ [Supabase] 成功開通新使用者:`, resData);
-                    } else {
-                        console.error(`❌ [Supabase] 寫入被拒絕 (HTTP ${response.status}):`, resData);
-                    }
-                } else {
-                    console.log(`ℹ️ [Supabase] 帳號已存在，跳過初始化步驟。`);
                 }
             } catch (err) {
-                console.error('❌ [Supabase] 網路或系統例外錯誤:', err);
+                console.error('寫入例外錯誤:', err);
             }
         }
 
-        // 切換帳號按鈕事件：清除快取並強制顯示登入對話框
+        // 切換帳號
         function switchAccount() {
             localStorage.removeItem('bed_account_id');
             currentAccountId = '';
@@ -411,16 +424,70 @@
             document.getElementById('login-overlay').classList.remove('hidden');
         }
 
+        // 刪除當前帳戶（從 Supabase 刪除該帳號的所有關聯紀錄並登出）
+        async function deleteCurrentAccount() {
+            if (!currentAccountId) return;
+            if (!confirm(`確定要刪除帳戶 "${currentAccountId}" 嗎？此動作將清除所有名下紀錄。`)) return;
+
+            try {
+                const deleteUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}`;
+                const response = await fetch(deleteUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (response.ok || response.status === 204) {
+                    alert(`帳戶 ${currentAccountId} 已成功刪除。`);
+                    switchAccount();
+                } else {
+                    alert('刪除帳戶失敗，請稍後再試。');
+                }
+            } catch (err) {
+                console.error('刪除帳戶發生錯誤:', err);
+                alert('網路錯誤，無法刪除帳戶。');
+            }
+        }
+
+        // 解除單一裝置綁定
+        async function removeDeviceBinding(deviceId, event) {
+            if (event) event.stopPropagation();
+            if (!confirm(`確定要將裝置 ${deviceId} 從您的帳號中解除綁定嗎？`)) return;
+
+            try {
+                const deleteUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&device_id=eq.${encodeURIComponent(deviceId)}`;
+                const response = await fetch(deleteUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (response.ok || response.status === 204) {
+                    alert(`裝置 ${deviceId} 已成功解除綁定。`);
+                    await fetchUserDevicesFromSupabase();
+                } else {
+                    alert('解除綁定失敗。');
+                }
+            } catch (err) {
+                console.error('解除裝置綁定發生錯誤:', err);
+                alert('網路錯誤，無法解除綁定。');
+            }
+        }
+
         // 更新 UI 帳號資訊並發起 Supabase 裝置清單查詢
         async function updateAccountUI() {
             document.getElementById('display-account-id').textContent = currentAccountId;
             document.getElementById('device-tab-account-id').textContent = currentAccountId;
-            
+
             await fetchUserDevicesFromSupabase();
             checkDeviceStatus();
         }
 
-        // 查詢當前帳號綁定的所有裝置（分段查詢，徹底根治 400 關聯錯誤）
+        // 查詢當前帳號綁定的所有裝置
         async function fetchUserDevicesFromSupabase() {
             const container = document.getElementById('device-list-container');
             container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
@@ -436,8 +503,6 @@
 
                 const rows = await response.json();
                 const dataRows = Array.isArray(rows) ? rows : [];
-
-                // 過濾掉未綁定的 UNBOUND 紀錄
                 const validRows = dataRows.filter(r => r.device_id && r.device_id !== 'UNBOUND');
 
                 if (response.ok && validRows.length > 0) {
@@ -471,7 +536,7 @@
                     currentDeviceId = '';
                     document.getElementById('current-device-name').textContent = '未選擇裝置';
                     document.getElementById('current-device-location').textContent = '請配對翻身床';
-                    
+
                     container.innerHTML = `
                         <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800 text-center space-y-3">
                             <div class="text-amber-400 text-sm font-semibold">目前尚無綁定任何翻身床</div>
@@ -489,7 +554,7 @@
             }
         }
 
-        // 渲染裝置卡片列表
+        // 渲染裝置卡片列表（包含刪除按鈕）
         function renderDeviceListUI() {
             const container = document.getElementById('device-list-container');
             container.innerHTML = '';
@@ -497,9 +562,8 @@
             userDevicesList.forEach(dev => {
                 const isSelected = dev.id === currentDeviceId;
                 const card = document.createElement('div');
-                card.className = `p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
-                    isSelected ? 'bg-slate-900 border-emerald-500/60 shadow-md' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
-                }`;
+                card.className = `p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${isSelected ? 'bg-slate-900 border-emerald-500/60 shadow-md' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                    }`;
                 card.onclick = () => {
                     selectDevice(dev.id, dev.name);
                     renderDeviceListUI();
@@ -520,7 +584,9 @@
                         <span class="text-[10px] ${dev.status === 'online' ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded">
                             ${dev.status === 'online' ? '線上運作' : '離線'}
                         </span>
-                        ${isSelected ? '<span class="text-xs text-emerald-400 font-bold">✓ 已選取</span>' : ''}
+                        <button onclick="removeDeviceBinding('${dev.id}', event)" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 px-2 py-1 rounded text-[11px] transition">
+                            🗑️ 解除
+                        </button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -607,7 +673,7 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     return ` ${context.label}: ${context.raw} 小時`;
                                 }
                             }
@@ -784,7 +850,7 @@
             log('已清除本地快取資訊。');
         }
 
-        // Web BLE 配網流程 + 成功後自動寫入 Supabase user_devices 真實綁定
+        // Web BLE 配網流程
         async function startBLEProvisioning() {
             const ssid = document.getElementById('wifi-ssid').value.trim();
             const pass = document.getElementById('wifi-pass').value.trim();
@@ -835,7 +901,6 @@
                 device.gatt.disconnect();
                 updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
 
-                // 將真實配對成功的裝置寫入 Supabase 綁定
                 log(`正在將真實裝置 ${discoveredDeviceId} 綁定至帳號 ${currentAccountId}...`);
                 await registerDeviceToUser(currentAccountId, discoveredDeviceId);
 
@@ -848,7 +913,7 @@
         // 向 Supabase 寫入真實的 user_devices 關聯
         async function registerDeviceToUser(accountId, deviceId) {
             try {
-                const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
+                const response = - await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
                     method: 'POST',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
