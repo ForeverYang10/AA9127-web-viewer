@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BLE Wi-Fi Provisioning & Status</title>
+    <title>BLE Wi-Fi Provisioning</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -21,8 +21,8 @@
 
         <!-- 標頭資訊 -->
         <div class="text-center space-y-1">
-            <h1 class="text-2xl font-bold text-emerald-400">Wi-Fi 配網與狀態監控</h1>
-            <p class="text-slate-400 text-sm">透過 Web BLE 傳送認證資訊與即時心跳監控</p>
+            <h1 class="text-2xl font-bold text-emerald-400">Wi-Fi 配網設定</h1>
+            <p class="text-slate-400 text-sm">透過 Web BLE 傳送無線網路認證資訊</p>
         </div>
 
         <!-- 裝置連線狀態儀表板 -->
@@ -43,12 +43,6 @@
                     <div id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</div>
                 </div>
             </div>
-        </div>
-
-        <!-- 最後心跳時間與時區提示 -->
-        <div class="bg-slate-900/40 px-3 py-2 rounded-lg border border-slate-800 text-xs text-slate-400 flex justify-between items-center">
-            <span id="updateTime">最後心跳時間: --</span>
-            <span class="text-[10px] text-slate-500">時區: 台北 (GMT+8)</span>
         </div>
 
         <!-- Wi-Fi 設定表單 -->
@@ -97,4 +91,189 @@
 
     <script>
         const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
-        const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1
+        const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1';
+
+        const SUPABASE_URL = 'https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1/device_status?device_id=eq.DK_AirBed_64EE';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
+
+        // 定期背景檢查狀態的計時器變數
+        let statusInterval = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCachedCredentials();
+            checkDeviceStatus(); // 載入時立即檢查一次
+            
+            // 每 10 秒自動背景輪詢一次 Supabase，實時更新線上/離線狀態
+            statusInterval = setInterval(checkDeviceStatus, 10000);
+        });
+
+        function log(msg, type = 'info') {
+            const logBox = document.getElementById('status-log');
+            const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+            let colorClass = 'text-slate-300';
+            if (type === 'success') colorClass = 'text-emerald-400 font-bold';
+            if (type === 'error') colorClass = 'text-rose-400 font-bold';
+
+            const entry = document.createElement('div');
+            entry.className = colorClass;
+            entry.textContent = `[${time}] ${msg}`;
+            logBox.appendChild(entry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function updateConnectionUI(target, status, text) {
+            const dot = document.getElementById(`${target}-dot`);
+            const label = document.getElementById(`${target}-status-text`);
+
+            dot.className = "w-3 h-3 rounded-full inline-block transition-colors";
+            if (status === 'connected') {
+                dot.classList.add('bg-emerald-400', 'shadow-lg', 'shadow-emerald-500/50');
+                label.className = "text-xs font-bold text-emerald-400";
+            } else if (status === 'connecting') {
+                dot.classList.add('bg-amber-400', 'animate-pulse');
+                label.className = "text-xs font-bold text-amber-400";
+            } else if (status === 'error') {
+                dot.classList.add('bg-rose-500');
+                label.className = "text-xs font-bold text-rose-400";
+            } else {
+                dot.classList.add('bg-slate-500');
+                label.className = "text-xs font-bold text-slate-300";
+            }
+            label.textContent = text;
+        }
+
+        // 🌟 核心：結合心跳時間戳（updated_at）的超時離線判斷邏輯
+        async function checkDeviceStatus() {
+            try {
+                const response = await fetch(SUPABASE_URL, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                const rows = await response.json();
+                
+                if (rows && rows.length > 0) {
+                    const device = rows[0];
+                    const dbStatus = device.status; // 'online' 或 'offline'
+                    const updatedAt = device.updated_at; // 假設您的資料表有這個時間欄位
+
+                    if (dbStatus === 'online' && updatedAt) {
+                        const lastBeatTime = new Date(updatedAt).getTime();
+                        const now = new Date().getTime();
+                        const diffSeconds = (now - lastBeatTime) / 1000;
+
+                        // 🔴 超時機制：如果超過 40 秒沒有更新心跳，即使資料庫寫 online 也強制判定為離線
+                        if (diffSeconds > 40) {
+                            updateConnectionUI('wifi', 'error', '裝置離線(逾時)');
+                        } else {
+                            updateConnectionUI('wifi', 'connected', '裝置線上');
+                        }
+                    } else {
+                        updateConnectionUI('wifi', 'error', '裝置離線');
+                    }
+                } else {
+                    updateConnectionUI('wifi', 'error', '無裝置資料');
+                }
+            } catch (err) {
+                console.error('狀態查詢失敗', err);
+            }
+        }
+
+        function togglePassVisibility() {
+            const passInput = document.getElementById('wifi-pass');
+            const btn = document.getElementById('toggle-pass-btn');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                btn.textContent = '隱藏';
+            } else {
+                passInput.type = 'password';
+                btn.textContent = '顯示';
+            }
+        }
+
+        function loadCachedCredentials() {
+            const savedSsid = localStorage.getItem('ble_wifi_ssid');
+            const savedPass = localStorage.getItem('ble_wifi_pass');
+            if (savedSsid) document.getElementById('wifi-ssid').value = savedSsid;
+            if (savedPass) document.getElementById('wifi-pass').value = savedPass;
+            if (savedSsid) log('已自動帶入歷史 Wi-Fi 設定。');
+        }
+
+        function saveCredentials(ssid, pass) {
+            localStorage.setItem('ble_wifi_ssid', ssid);
+            localStorage.setItem('ble_wifi_pass', pass);
+        }
+
+        function clearCachedCredentials() {
+            localStorage.removeItem('ble_wifi_ssid');
+            localStorage.removeItem('ble_wifi_pass');
+            document.getElementById('wifi-ssid').value = '';
+            document.getElementById('wifi-pass').value = '';
+            log('已清除 LocalStorage 快取資訊。');
+        }
+
+        async function startBLEProvisioning() {
+            const ssid = document.getElementById('wifi-ssid').value.trim();
+            const pass = document.getElementById('wifi-pass').value.trim();
+
+            if (!ssid) {
+                alert('請先輸入 Wi-Fi 名稱 (SSID)');
+                return;
+            }
+
+            saveCredentials(ssid, pass);
+
+            if (!navigator.bluetooth) {
+                log('Your browser does not support Web Bluetooth API.', 'error');
+                return;
+            }
+
+            try {
+                updateConnectionUI('ble', 'connecting', '掃描中...');
+                log('正在掃描 BLE 裝置...');
+
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'DK_AirBed_' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                log(`已找到裝置：${device.name}，正在建立 GATT 連線...`);
+                updateConnectionUI('ble', 'connecting', '連線中...');
+
+                const server = await device.gatt.connect();
+                updateConnectionUI('ble', 'connected', '藍牙已連線');
+
+                log('取得 BLE 服務...');
+                const service = await server.getPrimaryService(SERVICE_UUID);
+
+                log('取得 BLE 寫入特徵...');
+                const characteristic = await service.getCharacteristic(CHAR_RX_UUID);
+
+                const encoder = new TextEncoder();
+
+                log(`正在寫入 SSID: ${ssid}`);
+                await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ ssid: ssid })));
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                log(`正在寫入 Password...`);
+                await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ pw: pass })));
+
+                log('✅ 傳送成功！Wi-Fi 帳密已寫入裝置。', 'success');
+
+                device.gatt.disconnect();
+                updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
+                log('✅ 藍牙傳送成功，正在等待裝置連線上雲...', 'success');
+
+                updateConnectionUI('wifi', 'connecting', '等待上線...');
+
+            } catch (err) {
+                updateConnectionUI('ble', 'error', '連線失敗');
+                log(`錯誤: ${err.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>
