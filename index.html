@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>東庚翻身床 - 智慧監控與配網</title>
+    <title>東庚翻身床 - 智慧照護與配網管理</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js for data visualization -->
@@ -16,7 +16,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
-        /* Custom scrollbar for log box */
+        /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -30,109 +30,183 @@
     </style>
 </head>
 
-<body class="min-h-screen flex flex-col items-center justify-start p-4 md:p-6">
+<body class="min-h-screen flex flex-col items-center justify-start p-3 sm:p-4 md:p-6">
 
-    <div class="max-w-xl w-full bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/80 p-5 md:p-6 space-y-5">
+    <!-- 1. 帳號登入蓋層 (Overlay Login Portal) -->
+    <div id="login-overlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 font-bold text-2xl mx-auto mb-3">
+                    🛏️
+                </div>
+                <h2 class="text-2xl font-extrabold text-emerald-400">東庚翻身床</h2>
+                <p class="text-slate-400 text-xs sm:text-sm">請輸入您的照護帳號或代碼以檢視綁定裝置</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">照護帳號 / 使用者代碼</label>
+                    <input id="input-account-id" type="text" placeholder="例：home_user_01 或 demo" required
+                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition">
+                </div>
+                <button type="submit"
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 text-sm flex items-center justify-center gap-2">
+                    <span>🔑 進入主畫面</span>
+                </button>
+            </form>
+
+            <div class="text-center">
+                <p class="text-[11px] text-slate-500">提示：輸入帳號僅用於篩選專屬翻身床，無須密碼認證</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主頁面容器 -->
+    <div class="max-w-xl w-full bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/80 p-4 sm:p-5 md:p-6 space-y-5">
+
+        <!-- 頂部帳號與裝置狀態列 -->
+        <div class="flex items-center justify-between bg-slate-900/80 p-2.5 sm:p-3 rounded-xl border border-slate-700/60">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-base">
+                    👤
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-400">目前使用者</div>
+                    <div id="display-account-id" class="text-xs font-bold text-emerald-400">未登入</div>
+                </div>
+            </div>
+            <button onclick="switchAccount()"
+                class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+                <span>🔄 切換帳號</span>
+            </button>
+        </div>
 
         <!-- 頁頭與主標題 -->
         <div class="text-center space-y-1">
-            <h1 class="text-2xl md:text-3xl font-extrabold text-emerald-400 tracking-wide">東庚翻身床</h1>
-            <p class="text-slate-400 text-xs md:text-sm">智慧翻身照護與即時裝置管理系統</p>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-wide">東庚翻身床</h1>
+            <p class="text-slate-400 text-xs sm:text-sm">智慧協助翻身與照護歷程統計</p>
         </div>
 
         <!-- 頂部頁籤導覽 (Tabs) -->
-        <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60">
+        <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 text-xs sm:text-sm">
             <button id="tab-history-btn" onclick="switchTab('history')"
-                class="flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md">
+                class="flex-1 py-2 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md">
                 📊 使用歷程
             </button>
+            <button id="tab-devices-btn" onclick="switchTab('devices')"
+                class="flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
+                📱 裝置清單
+            </button>
             <button id="tab-wifi-btn" onclick="switchTab('wifi')"
-                class="flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
-                📶 Wi-Fi 配網
+                class="flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
+                📶 配網設定
             </button>
         </div>
 
-        <!-- 裝置連線狀態儀表板 (公用區塊) -->
-        <div class="grid grid-cols-2 gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-700/60">
-            <!-- BLE 狀態 -->
-            <div class="flex items-center space-x-2.5">
-                <span id="ble-dot" class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
-                <div>
-                    <div class="text-[10px] text-slate-400 font-medium">藍牙 (BLE)</div>
-                    <div id="ble-status-text" class="text-xs font-bold text-slate-300">未連線</div>
+        <!-- 裝置狀態卡片 (公用區塊) -->
+        <div class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 space-y-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <span id="current-device-name" class="text-xs sm:text-sm font-bold text-slate-200">DK_AirBed_64EE</span>
+                    <span id="current-device-location" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">主臥室 A 床</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span id="wifi-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                    <span id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</span>
                 </div>
             </div>
-            <!-- Wi-Fi 雲端狀態 -->
-            <div class="flex items-center space-x-2.5">
-                <span id="wifi-dot" class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
-                <div>
-                    <div class="text-[10px] text-slate-400 font-medium">雲端狀態</div>
-                    <div id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</div>
-                </div>
+            <div class="text-[11px] text-slate-400 flex justify-between items-center pt-1 border-t border-slate-800">
+                <span id="update-time-text">最後心跳: --</span>
+                <span class="text-[10px] text-slate-500 font-mono">Asia/Taipei</span>
             </div>
-        </div>
-
-        <!-- 最後心跳時間區塊 -->
-        <div class="bg-slate-900/40 px-3.5 py-2 rounded-lg border border-slate-800 text-xs text-slate-400 flex justify-between items-center">
-            <span id="update-time-text">最後心跳: --</span>
-            <span class="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Asia/Taipei</span>
         </div>
 
         <!-- ==================== VIEW 1: 使用歷程 (Main History Dashboard) ==================== -->
-        <div id="view-history" class="space-y-5">
+        <div id="view-history" class="space-y-4">
             
             <!-- 時間範圍切換選單 -->
             <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded-lg border border-slate-800">
                 <span class="text-xs font-semibold text-slate-300 px-2">統計時間區間</span>
                 <div class="flex gap-1 text-xs">
                     <button id="range-today" onclick="setRange('today')" class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
-                    <button id="range-weekly" onclick="setRange('weekly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">每週</button>
-                    <button id="range-monthly" onclick="setRange('monthly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">每月</button>
+                    <button id="range-weekly" onclick="setRange('weekly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
+                    <button id="range-monthly" onclick="setRange('monthly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
+                </div>
+            </div>
+
+            <!-- 關鍵統計數據卡片 (主要聚焦：左側翻身 vs 右側翻身) -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-900/70 p-3.5 rounded-xl border border-sky-500/30 text-center space-y-1">
+                    <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
+                        <span>👈 左側翻身協助</span>
+                    </div>
+                    <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span class="text-xs font-normal text-slate-400">小時</span></div>
+                    <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次 (固定週期)</div>
+                </div>
+
+                <div class="bg-slate-900/70 p-3.5 rounded-xl border border-indigo-500/30 text-center space-y-1">
+                    <div class="text-xs text-indigo-400 font-semibold flex items-center justify-center gap-1">
+                        <span>👉 右側翻身協助</span>
+                    </div>
+                    <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span class="text-xs font-normal text-slate-400">小時</span></div>
+                    <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次 (固定週期)</div>
                 </div>
             </div>
 
             <!-- 圖表卡片區塊 -->
             <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 flex flex-col items-center space-y-3">
                 <div class="w-full flex justify-between items-center text-xs text-slate-400">
-                    <span id="chart-title" class="font-bold text-slate-200">24小時翻身時段分佈 (00:00 - 24:00)</span>
+                    <span id="chart-title" class="font-bold text-slate-200">翻身模式時間佔比</span>
                     <span id="chart-unit" class="text-[11px] text-slate-500">單位：小時</span>
                 </div>
 
                 <!-- 圓餅 / 環形圖 Canvas -->
-                <div class="relative w-48 h-48 sm:w-56 sm:h-56 my-2">
+                <div class="relative w-44 h-44 sm:w-52 sm:h-52 my-1">
                     <canvas id="usageChart"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span class="text-[10px] text-slate-400">協助運作總時數</span>
+                        <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0 h</span>
+                    </div>
                 </div>
 
-                <div id="chart-legend-custom" class="flex flex-wrap justify-center gap-3 text-[11px] text-slate-300 pt-1">
-                    <!-- 自動由 JS 填入 Legend -->
+                <div id="chart-legend-custom" class="flex flex-wrap justify-center gap-3 text-xs text-slate-300 pt-1">
+                    <!-- 由 JS 動態生成 Legend -->
                 </div>
             </div>
 
-            <!-- 關鍵統計數據卡片 (3欄) -->
-            <div class="grid grid-cols-3 gap-2 sm:gap-3">
-                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 text-center space-y-1">
-                    <div class="text-[10px] sm:text-xs text-slate-400">累積運作時間</div>
-                    <div id="metric-total-time" class="text-sm sm:text-base font-extrabold text-emerald-400">6.5 <span class="text-[10px] font-normal text-slate-400">小時</span></div>
-                </div>
-                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 text-center space-y-1">
-                    <div class="text-[10px] sm:text-xs text-slate-400">翻身執行次數</div>
-                    <div id="metric-turn-count" class="text-sm sm:text-base font-extrabold text-cyan-400">14 <span class="text-[10px] font-normal text-slate-400">次</span></div>
-                </div>
-                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 text-center space-y-1">
-                    <div class="text-[10px] sm:text-xs text-slate-400">平均翻身週期</div>
-                    <div id="metric-avg-interval" class="text-sm sm:text-base font-extrabold text-amber-400">45 <span class="text-[10px] font-normal text-slate-400">分鐘</span></div>
-                </div>
+            <!-- 說明警示小卡 -->
+            <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                <p class="text-slate-300 font-semibold">💡 系統說明：</p>
+                <p>本設備為協助使用者翻身與兩側減壓擺位之照護輔具。單次協助翻身維持時間為固定設定，數據即時同步自翻身床控制機卡。</p>
             </div>
 
         </div>
 
-        <!-- ==================== VIEW 2: Wi-Fi 配網選單 (BLE Provisioning) ==================== -->
+        <!-- ==================== VIEW 2: 裝置清單 (Devices Tab) ==================== -->
+        <div id="view-devices" class="space-y-4 hidden">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-200">名下綁定翻身床</h2>
+                    <p class="text-[11px] text-slate-400">帳號 <span id="device-tab-account-id" class="text-emerald-400 font-mono">--</span> 專屬之裝置</p>
+                </div>
+                <button onclick="alert('提示：請使用「Wi-Fi 配網」完成新翻身床之藍牙初始化設定。')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition">
+                    + 說明
+                </button>
+            </div>
+
+            <!-- 動態渲染裝置列表 -->
+            <div id="device-list-container" class="space-y-2.5">
+                <!-- 由 JS 渲染 -->
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 3: Wi-Fi 配網選單 (BLE Provisioning) ==================== -->
         <div id="view-wifi" class="space-y-4 hidden">
             
             <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
                 <div class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10 10 0 0114.142 0M2.828 9.9a15 15 0 0120.344 0"></path></svg>
-                    發送 Wi-Fi 憑證至翻身床裝置
+                    發送 Wi-Fi 憑證至目標翻身床
                 </div>
 
                 <div>
@@ -153,25 +227,33 @@
                     </div>
                 </div>
 
-                <!-- LocalStorage 提示與清除鈕 -->
                 <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
                     <span class="flex items-center gap-1.5 text-[11px]">
                         <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
-                        已啟用 LocalStorage 自動快速帶入
+                        已啟用 LocalStorage 快取帶入
                     </span>
                     <button onclick="clearCachedCredentials()" class="text-rose-400 hover:underline text-[11px]">清除快取</button>
                 </div>
             </div>
 
+            <!-- 藍牙 BLE 連線狀態 -->
+            <div class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+                <div class="flex items-center space-x-2">
+                    <span id="ble-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                    <span id="ble-status-text" class="font-bold text-slate-300">藍牙未連線</span>
+                </div>
+                <span id="target-ble-device" class="text-[10px] text-slate-500 font-mono">目標: DK_AirBed_64EE</span>
+            </div>
+
             <!-- 連線觸發按鈕 -->
             <button onclick="startBLEProvisioning()"
                 class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 text-sm">
-                <span>🔍 搜尋並傳送設定至東庚翻身床</span>
+                <span>🔍 搜尋並傳送 Wi-Fi 設定至翻身床</span>
             </button>
 
-            <!-- 藍牙通訊狀態 Log Logbox -->
+            <!-- 藍牙通訊狀態 Log -->
             <div class="space-y-1">
-                <div class="text-[11px] text-slate-400 font-medium px-1">傳送狀態紀錄：</div>
+                <div class="text-[11px] text-slate-400 font-medium px-1">配網通訊紀錄：</div>
                 <div id="status-log"
                     class="bg-slate-900/90 rounded-xl p-3 text-xs font-mono text-slate-300 border border-slate-800 h-28 overflow-y-auto space-y-1">
                     <div class="text-slate-500">> 系統就緒，等待開始配網...</div>
@@ -182,83 +264,198 @@
 
     </div>
 
-    <!-- 腳本邏輯 -->
+    <!-- 邏輯處理腳本 -->
     <script>
-        // BLE 相關 UUID 與連線參數
+        // BLE 相關 UUID
         const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
         const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1';
 
-        // Supabase REST Endpoint
+        // Supabase REST Endpoint (維持現有 API 連線)
         const SUPABASE_URL = 'https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1/device_status?device_id=eq.DK_AirBed_64EE';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
 
+        let currentAccountId = '';
+        let currentDeviceId = 'DK_AirBed_64EE';
         let statusInterval = null;
         let usageChartInstance = null;
         let currentRange = 'today';
 
-        // 模擬使用歷程資料集 (可無縫接入 Supabase 歷程 API)
+        // 模擬帳號對應之裝置清單 (Login 過濾用途)
+        const accountDeviceMap = {
+            'home_user_01': [
+                { id: 'DK_AirBed_64EE', name: '主臥室 A 床', status: 'online' },
+                { id: 'DK_AirBed_88B2', name: '二樓客房床', status: 'offline' }
+            ],
+            'demo': [
+                { id: 'DK_AirBed_64EE', name: '展示體驗床 01', status: 'online' }
+            ]
+        };
+
+        // 依據嚴格運作模式「左側翻身」與「右側翻身」所設計之協助歷程數據
         const mockUsageData = {
             today: {
-                title: '24小時翻身時段分佈 (00:00 - 24:00)',
-                labels: ['夜間自動翻身 (00-08)', '日間定時翻身 (08-16)', '傍晚減壓護理 (16-24)', '待機/靜止狀態'],
-                datasets: [3.5, 2.0, 1.0, 17.5], // 總合 24 小時
-                bgColors: ['#10b981', '#06b6d4', '#f59e0b', '#334155'],
-                totalHours: '6.5',
-                turnCount: '14',
-                avgInterval: '45'
+                labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
+                datasets: [3.5, 4.0, 16.5], // 總合 24 小時
+                bgColors: ['#38bdf8', '#818cf8', '#334155'],
+                leftHours: '3.5',
+                leftCount: '7',
+                rightHours: '4.0',
+                rightCount: '8',
+                totalHours: '7.5'
             },
             weekly: {
-                title: '本週各時段翻身運作累計',
-                labels: ['日間自動翻身', '夜間減壓模式', '手動調整模式', '靜止待機'],
-                datasets: [22.0, 24.5, 5.5, 116.0], // 總合 168 小時
-                bgColors: ['#06b6d4', '#10b981', '#f59e0b', '#334155'],
-                totalHours: '52.0',
-                turnCount: '98',
-                avgInterval: '50'
+                labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
+                datasets: [24.5, 28.0, 115.5], // 總合 168 小時
+                bgColors: ['#38bdf8', '#818cf8', '#334155'],
+                leftHours: '24.5',
+                leftCount: '49',
+                rightHours: '28.0',
+                rightCount: '56',
+                totalHours: '52.5'
             },
             monthly: {
-                title: '本月翻身護理統計分佈',
-                labels: ['自動定期翻身', '夜間強化防褥', '手動協助翻身', '待機靜止'],
-                datasets: [90.0, 110.0, 20.0, 500.0], // 總合 720 小時
-                bgColors: ['#10b981', '#6366f1', '#f59e0b', '#334155'],
-                totalHours: '220.0',
-                turnCount: '412',
-                avgInterval: '48'
+                labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
+                datasets: [100.0, 110.0, 510.0], // 總合 720 小時
+                bgColors: ['#38bdf8', '#818cf8', '#334155'],
+                leftHours: '100.0',
+                leftCount: '200',
+                rightHours: '110.0',
+                rightCount: '220',
+                totalHours: '210.0'
             }
         };
 
         window.addEventListener('DOMContentLoaded', () => {
+            checkLoginState();
             loadCachedCredentials();
             checkDeviceStatus();
             initChart();
 
-            // 每 10 秒定期更新 Supabase 雲端心跳狀態
+            // 定期更新雲端心跳狀態 (每 10 秒)
             statusInterval = setInterval(checkDeviceStatus, 10000);
         });
 
-        // 頁籤切換邏輯 (Tab Switching)
-        function switchTab(tabName) {
-            const historyView = document.getElementById('view-history');
-            const wifiView = document.getElementById('view-wifi');
-            const historyBtn = document.getElementById('tab-history-btn');
-            const wifiBtn = document.getElementById('tab-wifi-btn');
-
-            if (tabName === 'history') {
-                historyView.classList.remove('hidden');
-                wifiView.classList.add('hidden');
-                
-                historyBtn.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
-                wifiBtn.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+        // 登入狀態檢查
+        function checkLoginState() {
+            const savedAccount = localStorage.getItem('bed_account_id');
+            if (savedAccount) {
+                currentAccountId = savedAccount;
+                document.getElementById('login-overlay').classList.add('hidden');
+                updateAccountUI();
             } else {
-                historyView.classList.add('hidden');
-                wifiView.classList.remove('hidden');
-
-                wifiBtn.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
-                historyBtn.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+                document.getElementById('login-overlay').classList.remove('hidden');
             }
         }
 
-        // 時間區間切換 (Today / Weekly / Monthly)
+        // 登入表單處理
+        function handleLogin(e) {
+            e.preventDefault();
+            const inputVal = document.getElementById('input-account-id').value.trim();
+            if (!inputVal) return;
+
+            currentAccountId = inputVal;
+            localStorage.setItem('bed_account_id', currentAccountId);
+            document.getElementById('login-overlay').classList.add('hidden');
+            updateAccountUI();
+        }
+
+        // 切換帳號按鈕事件
+        function switchAccount() {
+            localStorage.removeItem('bed_account_id');
+            document.getElementById('input-account-id').value = currentAccountId;
+            document.getElementById('login-overlay').classList.remove('hidden');
+        }
+
+        // 更新 UI 帳號與裝置資訊
+        function updateAccountUI() {
+            document.getElementById('display-account-id').textContent = currentAccountId;
+            document.getElementById('device-tab-account-id').textContent = currentAccountId;
+            renderDeviceList();
+        }
+
+        // 渲染綁定裝置清單
+        function renderDeviceList() {
+            const container = document.getElementById('device-list-container');
+            container.innerHTML = '';
+
+            // 若輸入的帳號不在預設 Map 內，提供預設展示卡片
+            const devices = accountDeviceMap[currentAccountId] || [
+                { id: 'DK_AirBed_64EE', name: '預設東庚翻身床 A', status: 'online' }
+            ];
+
+            devices.forEach(dev => {
+                const isSelected = dev.id === currentDeviceId;
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
+                    isSelected ? 'bg-slate-900 border-emerald-500/60' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                }`;
+                card.onclick = () => selectDevice(dev.id, dev.name);
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-lg ${isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'} flex items-center justify-center font-bold text-sm">
+                            🛏️
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">${dev.name}</div>
+                            <div class="text-[10px] text-slate-400 font-mono">${dev.id}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[10px] ${dev.status === 'online' ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded">
+                            ${dev.status === 'online' ? '線上運作' : '離線'}
+                        </span>
+                        ${isSelected ? '<span class="text-xs text-emerald-400">✓ 已選取</span>' : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectDevice(id, name) {
+            currentDeviceId = id;
+            document.getElementById('current-device-name').textContent = id;
+            document.getElementById('current-device-location').textContent = name;
+            document.getElementById('target-ble-device').textContent = `目標: ${id}`;
+            renderDeviceList();
+        }
+
+        // 頁籤切換
+        function switchTab(tabName) {
+            const historyView = document.getElementById('view-history');
+            const devicesView = document.getElementById('view-devices');
+            const wifiView = document.getElementById('view-wifi');
+
+            const historyBtn = document.getElementById('tab-history-btn');
+            const devicesBtn = document.getElementById('tab-devices-btn');
+            const wifiBtn = document.getElementById('tab-wifi-btn');
+
+            // 隱藏所有 View
+            historyView.classList.add('hidden');
+            devicesView.classList.add('hidden');
+            wifiView.classList.add('hidden');
+
+            // 重設按鈕樣式
+            const inactiveClass = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+            const activeClass = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
+
+            historyBtn.className = inactiveClass;
+            devicesBtn.className = inactiveClass;
+            wifiBtn.className = inactiveClass;
+
+            if (tabName === 'history') {
+                historyView.classList.remove('hidden');
+                historyBtn.className = activeClass;
+            } else if (tabName === 'devices') {
+                devicesView.classList.remove('hidden');
+                devicesBtn.className = activeClass;
+            } else if (tabName === 'wifi') {
+                wifiView.classList.remove('hidden');
+                wifiBtn.className = activeClass;
+            }
+        }
+
+        // 時間區間切換
         function setRange(range) {
             currentRange = range;
             ['today', 'weekly', 'monthly'].forEach(r => {
@@ -273,7 +470,7 @@
             updateChartData(range);
         }
 
-        // 初始化 Chart.js 圓餅圖
+        // 初始化 Chart.js 圖表
         function initChart() {
             const ctx = document.getElementById('usageChart').getContext('2d');
             const dataConfig = mockUsageData.today;
@@ -292,11 +489,9 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '68%',
+                    cutout: '72%',
                     plugins: {
-                        legend: {
-                            display: false // 使用自訂 Legend 以符合 Dark UI
-                        },
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -308,29 +503,32 @@
                 }
             });
 
-            renderCustomLegend(dataConfig);
+            updateChartData('today');
         }
 
-        // 更新圖表與統計數字
+        // 更新數據與卡片顯示
         function updateChartData(range) {
-            const dataConfig = mockUsageData[range];
-            
-            document.getElementById('chart-title').textContent = dataConfig.title;
-            document.getElementById('metric-total-time').innerHTML = `${dataConfig.totalHours} <span class="text-[10px] font-normal text-slate-400">小時</span>`;
-            document.getElementById('metric-turn-count').innerHTML = `${dataConfig.turnCount} <span class="text-[10px] font-normal text-slate-400">次</span>`;
-            document.getElementById('metric-avg-interval').innerHTML = `${dataConfig.avgInterval} <span class="text-[10px] font-normal text-slate-400">分鐘</span>`;
+            const config = mockUsageData[range];
+
+            document.getElementById('stat-left-hours').innerHTML = `${config.leftHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
+            document.getElementById('stat-left-count').textContent = `執行 ${config.leftCount} 次 (固定週期)`;
+
+            document.getElementById('stat-right-hours').innerHTML = `${config.rightHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
+            document.getElementById('stat-right-count').textContent = `執行 ${config.rightCount} 次 (固定週期)`;
+
+            document.getElementById('chart-center-total').textContent = `${config.totalHours} h`;
 
             if (usageChartInstance) {
-                usageChartInstance.data.labels = dataConfig.labels;
-                usageChartInstance.data.datasets[0].data = dataConfig.datasets;
-                usageChartInstance.data.datasets[0].backgroundColor = dataConfig.bgColors;
+                usageChartInstance.data.labels = config.labels;
+                usageChartInstance.data.datasets[0].data = config.datasets;
+                usageChartInstance.data.datasets[0].backgroundColor = config.bgColors;
                 usageChartInstance.update();
             }
 
-            renderCustomLegend(dataConfig);
+            renderCustomLegend(config);
         }
 
-        // 自訂渲染 Legend 標籤
+        // 自訂圖例
         function renderCustomLegend(config) {
             const legendBox = document.getElementById('chart-legend-custom');
             legendBox.innerHTML = '';
@@ -363,7 +561,7 @@
             const dot = document.getElementById(`${target}-dot`);
             const label = document.getElementById(`${target}-status-text`);
 
-            dot.className = "w-3 h-3 rounded-full inline-block transition-colors";
+            dot.className = "w-2.5 h-2.5 rounded-full inline-block transition-colors";
             if (status === 'connected') {
                 dot.classList.add('bg-emerald-400', 'shadow-lg', 'shadow-emerald-500/50');
                 label.className = "text-xs font-bold text-emerald-400";
@@ -380,7 +578,7 @@
             label.textContent = text;
         }
 
-        // Supabase 雲端心跳判斷 (40s 超時檢測 + 台北時區)
+        // Supabase 雲端心跳判斷 (40s 超時 + 台北時區)
         async function checkDeviceStatus() {
             try {
                 const response = await fetch(SUPABASE_URL, {
@@ -390,7 +588,6 @@
                     }
                 });
                 const rows = await response.json();
-                
                 const timeTextEl = document.getElementById('update-time-text');
 
                 if (rows && rows.length > 0) {
@@ -415,7 +612,6 @@
                             const now = new Date().getTime();
                             const diffSeconds = (now - lastBeatTime) / 1000;
 
-                            // 40 秒超時機制判定
                             if (diffSeconds > 40) {
                                 updateConnectionUI('wifi', 'error', '裝置離線(逾時)');
                             } else {
@@ -454,12 +650,6 @@
             const savedPass = localStorage.getItem('ble_wifi_pass');
             if (savedSsid) document.getElementById('wifi-ssid').value = savedSsid;
             if (savedPass) document.getElementById('wifi-pass').value = savedPass;
-            if (savedSsid) log('已自動載入已快取的 Wi-Fi 設定。');
-        }
-
-        function saveCredentials(ssid, pass) {
-            localStorage.setItem('ble_wifi_ssid', ssid);
-            localStorage.setItem('ble_wifi_pass', pass);
         }
 
         function clearCachedCredentials() {
@@ -480,7 +670,8 @@
                 return;
             }
 
-            saveCredentials(ssid, pass);
+            localStorage.setItem('ble_wifi_ssid', ssid);
+            localStorage.setItem('ble_wifi_pass', pass);
 
             if (!navigator.bluetooth) {
                 log('目前瀏覽器不支援 Web Bluetooth API。', 'error');
@@ -489,7 +680,7 @@
 
             try {
                 updateConnectionUI('ble', 'connecting', '掃描中...');
-                log('正在掃描東庚翻身床裝置 (DK_AirBed_)...');
+                log(`正在掃描裝置 (${currentDeviceId})...`);
 
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'DK_AirBed_' }],
@@ -502,12 +693,8 @@
                 const server = await device.gatt.connect();
                 updateConnectionUI('ble', 'connected', '藍牙已連線');
 
-                log('取得 BLE 通訊服務...');
                 const service = await server.getPrimaryService(SERVICE_UUID);
-
-                log('取得 BLE 寫入特徵碼...');
                 const characteristic = await service.getCharacteristic(CHAR_RX_UUID);
-
                 const encoder = new TextEncoder();
 
                 log(`正在寫入 SSID: ${ssid}`);
@@ -522,12 +709,12 @@
 
                 device.gatt.disconnect();
                 updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
-                log('✅ 藍牙離線，正等待裝置重連至雲端伺服器...', 'success');
+                log('✅ 藍牙離線，正等待裝置重連至雲端...', 'success');
 
                 updateConnectionUI('wifi', 'connecting', '等待上線...');
 
             } catch (err) {
-                updateConnectionUI('ble', 'error', '連线失敗');
+                updateConnectionUI('ble', 'error', '連線失敗');
                 log(`錯誤: ${err.message}`, 'error');
             }
         }
