@@ -189,14 +189,14 @@
                     <h2 class="text-sm font-bold text-slate-200">名下綁定翻身床</h2>
                     <p class="text-[11px] text-slate-400">帳號 <span id="device-tab-account-id" class="text-emerald-400 font-mono">--</span> 專屬之裝置</p>
                 </div>
-                <button onclick="alert('提示：請使用「Wi-Fi 配網」完成新翻身床之藍牙初始化設定。')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition">
-                    + 說明
+                <button onclick="fetchUserDevicesFromSupabase()" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                    <span>🔄 重新整理</span>
                 </button>
             </div>
 
             <!-- 動態渲染裝置列表 -->
             <div id="device-list-container" class="space-y-2.5">
-                <!-- 由 JS 渲染 -->
+                <div class="text-center py-6 text-slate-500 text-xs">載入中...</div>
             </div>
         </div>
 
@@ -270,32 +270,23 @@
         const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
         const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1';
 
-        // Supabase REST Endpoint (維持現有 API 連線)
-        const SUPABASE_URL = 'https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1/device_status?device_id=eq.DK_AirBed_64EE';
+        // Supabase REST Endpoint 基礎位置
+        const SUPABASE_BASE_URL = 'https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
 
         let currentAccountId = '';
         let currentDeviceId = 'DK_AirBed_64EE';
+        let currentDeviceLabel = '主臥室 A 床';
         let statusInterval = null;
         let usageChartInstance = null;
         let currentRange = 'today';
+        let userDevicesList = []; // 儲存自 Supabase 查出之真實裝置清單
 
-        // 模擬帳號對應之裝置清單 (Login 過濾用途)
-        const accountDeviceMap = {
-            'home_user_01': [
-                { id: 'DK_AirBed_64EE', name: '主臥室 A 床', status: 'online' },
-                { id: 'DK_AirBed_88B2', name: '二樓客房床', status: 'offline' }
-            ],
-            'demo': [
-                { id: 'DK_AirBed_64EE', name: '展示體驗床 01', status: 'online' }
-            ]
-        };
-
-        // 依據嚴格運作模式「左側翻身」與「右側翻身」所設計之協助歷程數據
+        // 協助歷程模擬數據
         const mockUsageData = {
             today: {
                 labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
-                datasets: [3.5, 4.0, 16.5], // 總合 24 小時
+                datasets: [3.5, 4.0, 16.5],
                 bgColors: ['#38bdf8', '#818cf8', '#334155'],
                 leftHours: '3.5',
                 leftCount: '7',
@@ -305,7 +296,7 @@
             },
             weekly: {
                 labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
-                datasets: [24.5, 28.0, 115.5], // 總合 168 小時
+                datasets: [24.5, 28.0, 115.5],
                 bgColors: ['#38bdf8', '#818cf8', '#334155'],
                 leftHours: '24.5',
                 leftCount: '49',
@@ -315,7 +306,7 @@
             },
             monthly: {
                 labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
-                datasets: [100.0, 110.0, 510.0], // 總合 720 小時
+                datasets: [100.0, 110.0, 510.0],
                 bgColors: ['#38bdf8', '#818cf8', '#334155'],
                 leftHours: '100.0',
                 leftCount: '200',
@@ -328,7 +319,6 @@
         window.addEventListener('DOMContentLoaded', () => {
             checkLoginState();
             loadCachedCredentials();
-            checkDeviceStatus();
             initChart();
 
             // 定期更新雲端心跳狀態 (每 10 秒)
@@ -366,30 +356,80 @@
             document.getElementById('login-overlay').classList.remove('hidden');
         }
 
-        // 更新 UI 帳號與裝置資訊
-        function updateAccountUI() {
+        // 更新 UI 帳號資訊並發起 Supabase 裝置清單查詢
+        async function updateAccountUI() {
             document.getElementById('display-account-id').textContent = currentAccountId;
             document.getElementById('device-tab-account-id').textContent = currentAccountId;
-            renderDeviceList();
+            
+            // 真正向 Supabase 查詢 user_devices 資料表
+            await fetchUserDevicesFromSupabase();
+            checkDeviceStatus();
         }
 
-        // 渲染綁定裝置清單
-        function renderDeviceList() {
+        // 核心邏輯：向 Supabase 查詢當前帳號 (user_account) 綁定的所有裝置
+        async function fetchUserDevicesFromSupabase() {
+            const container = document.getElementById('device-list-container');
+            container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
+
+            try {
+                // Supabase Foreign Key Embedding 查詢語法
+                const url = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&select=device_id,device_status(*)`;
+                const response = await fetch(url, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                const rows = await response.json();
+
+                if (response.ok && rows && rows.length > 0) {
+                    userDevicesList = rows.map(r => {
+                        const statusObj = r.device_status || {};
+                        return {
+                            id: r.device_id,
+                            name: statusObj.bed_label || '東庚翻身床',
+                            status: statusObj.status || 'offline',
+                            updated_at: statusObj.updated_at
+                        };
+                    });
+
+                    // 預設選擇第一台裝置
+                    if (userDevicesList.length > 0) {
+                        const first = userDevicesList[0];
+                        selectDevice(first.id, first.name);
+                    }
+                } else {
+                    // 若資料庫查無此帳號綁定（例如新帳號），提示並建立預設示範選項
+                    userDevicesList = [
+                        { id: 'DK_AirBed_64EE', name: '預設測試床 A', status: 'online' }
+                    ];
+                    selectDevice('DK_AirBed_64EE', '預設測試床 A');
+                }
+
+                renderDeviceListUI();
+            } catch (err) {
+                console.error('Supabase 裝置清單查詢失敗', err);
+                container.innerHTML = '<div class="text-center py-4 text-rose-400 text-xs">資料庫連線失敗，請檢查網路連線。</div>';
+            }
+        }
+
+        // 渲染裝置卡片列表
+        function renderDeviceListUI() {
             const container = document.getElementById('device-list-container');
             container.innerHTML = '';
 
-            // 若輸入的帳號不在預設 Map 內，提供預設展示卡片
-            const devices = accountDeviceMap[currentAccountId] || [
-                { id: 'DK_AirBed_64EE', name: '預設東庚翻身床 A', status: 'online' }
-            ];
-
-            devices.forEach(dev => {
+            userDevicesList.forEach(dev => {
                 const isSelected = dev.id === currentDeviceId;
                 const card = document.createElement('div');
                 card.className = `p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
-                    isSelected ? 'bg-slate-900 border-emerald-500/60' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                    isSelected ? 'bg-slate-900 border-emerald-500/60 shadow-md' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
                 }`;
-                card.onclick = () => selectDevice(dev.id, dev.name);
+                card.onclick = () => {
+                    selectDevice(dev.id, dev.name);
+                    renderDeviceListUI();
+                    checkDeviceStatus();
+                };
 
                 card.innerHTML = `
                     <div class="flex items-center space-x-3">
@@ -405,7 +445,7 @@
                         <span class="text-[10px] ${dev.status === 'online' ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded">
                             ${dev.status === 'online' ? '線上運作' : '離線'}
                         </span>
-                        ${isSelected ? '<span class="text-xs text-emerald-400">✓ 已選取</span>' : ''}
+                        ${isSelected ? '<span class="text-xs text-emerald-400 font-bold">✓ 已選取</span>' : ''}
                     </div>
                 `;
                 container.appendChild(card);
@@ -414,10 +454,10 @@
 
         function selectDevice(id, name) {
             currentDeviceId = id;
+            currentDeviceLabel = name;
             document.getElementById('current-device-name').textContent = id;
             document.getElementById('current-device-location').textContent = name;
             document.getElementById('target-ble-device').textContent = `目標: ${id}`;
-            renderDeviceList();
         }
 
         // 頁籤切換
@@ -430,12 +470,10 @@
             const devicesBtn = document.getElementById('tab-devices-btn');
             const wifiBtn = document.getElementById('tab-wifi-btn');
 
-            // 隱藏所有 View
             historyView.classList.add('hidden');
             devicesView.classList.add('hidden');
             wifiView.classList.add('hidden');
 
-            // 重設按鈕樣式
             const inactiveClass = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
             const activeClass = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
 
@@ -578,10 +616,11 @@
             label.textContent = text;
         }
 
-        // Supabase 雲端心跳判斷 (40s 超時 + 台北時區)
+        // Supabase 動態心跳查詢 (根據目前選定的 currentDeviceId 進行查詢)
         async function checkDeviceStatus() {
             try {
-                const response = await fetch(SUPABASE_URL, {
+                const url = `${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(currentDeviceId)}`;
+                const response = await fetch(url, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -594,6 +633,10 @@
                     const device = rows[0];
                     const dbStatus = device.status;
                     const updatedAt = device.updated_at;
+
+                    if (device.bed_label) {
+                        document.getElementById('current-device-location').textContent = device.bed_label;
+                    }
 
                     if (updatedAt) {
                         let isoTimeString = updatedAt;
