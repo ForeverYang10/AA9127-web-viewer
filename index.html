@@ -107,8 +107,8 @@
         <div class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 space-y-2">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    <span id="current-device-name" class="text-xs sm:text-sm font-bold text-slate-200">DK_AirBed_64EE</span>
-                    <span id="current-device-location" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">主臥室 A 床</span>
+                    <span id="current-device-name" class="text-xs sm:text-sm font-bold text-slate-200">未選擇裝置</span>
+                    <span id="current-device-location" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">請配對翻身床</span>
                 </div>
                 <div class="flex items-center space-x-2">
                     <span id="wifi-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
@@ -242,13 +242,13 @@
                     <span id="ble-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
                     <span id="ble-status-text" class="font-bold text-slate-300">藍牙未連線</span>
                 </div>
-                <span id="target-ble-device" class="text-[10px] text-slate-500 font-mono">目標: DK_AirBed_64EE</span>
+                <span id="target-ble-device" class="text-[10px] text-slate-500 font-mono">目標: 掃描中自動抓取</span>
             </div>
 
             <!-- 連線觸發按鈕 -->
             <button onclick="startBLEProvisioning()"
                 class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 text-sm">
-                <span>🔍 搜尋並傳送 Wi-Fi 設定至翻身床</span>
+                <span>🔍 搜尋藍牙並傳送 Wi-Fi 設定</span>
             </button>
 
             <!-- 藍牙通訊狀態 Log -->
@@ -275,12 +275,12 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
 
         let currentAccountId = '';
-        let currentDeviceId = 'DK_AirBed_64EE';
-        let currentDeviceLabel = '主臥室 A 床';
+        let currentDeviceId = '';
+        let currentDeviceLabel = '';
         let statusInterval = null;
         let usageChartInstance = null;
         let currentRange = 'today';
-        let userDevicesList = []; // 儲存自 Supabase 查出之真實裝置清單
+        let userDevicesList = [];
 
         // 協助歷程模擬數據
         const mockUsageData = {
@@ -337,8 +337,8 @@
             }
         }
 
-        // 登入表單處理
-        function handleLogin(e) {
+        // 登入表單處理：輸入代碼後開通帳號，不預設綁定床位
+        async function handleLogin(e) {
             e.preventDefault();
             const inputVal = document.getElementById('input-account-id').value.trim();
             if (!inputVal) return;
@@ -346,6 +346,7 @@
             currentAccountId = inputVal;
             localStorage.setItem('bed_account_id', currentAccountId);
             document.getElementById('login-overlay').classList.add('hidden');
+            
             updateAccountUI();
         }
 
@@ -361,18 +362,16 @@
             document.getElementById('display-account-id').textContent = currentAccountId;
             document.getElementById('device-tab-account-id').textContent = currentAccountId;
             
-            // 真正向 Supabase 查詢 user_devices 資料表
             await fetchUserDevicesFromSupabase();
             checkDeviceStatus();
         }
 
-        // 核心邏輯：向 Supabase 查詢當前帳號 (user_account) 綁定的所有裝置
+        // 查詢當前帳號綁定的所有裝置
         async function fetchUserDevicesFromSupabase() {
             const container = document.getElementById('device-list-container');
             container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
 
             try {
-                // Supabase Foreign Key Embedding 查詢語法
                 const url = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&select=device_id,device_status(*)`;
                 const response = await fetch(url, {
                     headers: {
@@ -394,17 +393,25 @@
                         };
                     });
 
-                    // 預設選擇第一台裝置
                     if (userDevicesList.length > 0) {
                         const first = userDevicesList[0];
                         selectDevice(first.id, first.name);
                     }
                 } else {
-                    // 若資料庫查無此帳號綁定（例如新帳號），提示並建立預設示範選項
-                    userDevicesList = [
-                        { id: 'DK_AirBed_64EE', name: '預設測試床 A', status: 'online' }
-                    ];
-                    selectDevice('DK_AirBed_64EE', '預設測試床 A');
+                    // 若新帳號尚無任何綁定裝置，保持空陣列，引導至配網設定
+                    userDevicesList = [];
+                    currentDeviceId = '';
+                    document.getElementById('current-device-name').textContent = '未選擇裝置';
+                    document.getElementById('current-device-location').textContent = '請配對翻身床';
+                    
+                    container.innerHTML = `
+                        <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800 text-center space-y-3">
+                            <div class="text-amber-400 text-sm font-semibold">目前尚無綁定任何翻身床</div>
+                            <p class="text-slate-400 text-xs">請點擊下方按鈕或切換至「配網設定」透過藍牙搜尋並配對新翻身床。</p>
+                            <button onclick="switchTab('wifi')" class="bg-emerald-600 text-white text-xs px-4 py-2 rounded-lg font-medium shadow">前往藍牙配網</button>
+                        </div>
+                    `;
+                    return;
                 }
 
                 renderDeviceListUI();
@@ -616,8 +623,14 @@
             label.textContent = text;
         }
 
-        // Supabase 動態心跳查詢 (根據目前選定的 currentDeviceId 進行查詢)
+        // Supabase 動態心跳查詢
         async function checkDeviceStatus() {
+            if (!currentDeviceId) {
+                updateConnectionUI('wifi', 'error', '未選取裝置');
+                document.getElementById('update-time-text').textContent = '最後心跳: --';
+                return;
+            }
+
             try {
                 const url = `${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(currentDeviceId)}`;
                 const response = await fetch(url, {
@@ -703,7 +716,7 @@
             log('已清除本地快取資訊。');
         }
 
-        // Web BLE 配網流程
+        // Web BLE 配網流程 + 成功後自動寫入 Supabase user_devices 綁定
         async function startBLEProvisioning() {
             const ssid = document.getElementById('wifi-ssid').value.trim();
             const pass = document.getElementById('wifi-pass').value.trim();
@@ -722,15 +735,16 @@
             }
 
             try {
-                updateConnectionUI('ble', 'connecting', '掃描中...');
-                log(`正在掃描裝置 (${currentDeviceId})...`);
+                updateConnectionUI('ble', 'connecting', '掃描藍牙中...');
+                log(`正在掃描東庚翻身床裝置 (DK_AirBed_)...`);
 
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'DK_AirBed_' }],
                     optionalServices: [SERVICE_UUID]
                 });
 
-                log(`已配對裝置：${device.name}，正在建立 GATT 連線...`);
+                const discoveredDeviceId = device.name;
+                log(`已配對裝置：${discoveredDeviceId}，正在建立 GATT 連線...`);
                 updateConnectionUI('ble', 'connecting', '連線中...');
 
                 const server = await device.gatt.connect();
@@ -748,17 +762,49 @@
                 log(`正在寫入 Password...`);
                 await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ pw: pass })));
 
-                log('✅ 憑證傳送成功！Wi-Fi 資訊已成功寫入裝置。', 'success');
+                log('✅ 憑證傳送成功！Wi-Fi 資訊已寫入裝置。', 'success');
 
                 device.gatt.disconnect();
                 updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
-                log('✅ 藍牙離線，正等待裝置重連至雲端...', 'success');
 
-                updateConnectionUI('wifi', 'connecting', '等待上線...');
+                // 自動將裝置註冊綁定至目前使用者帳號
+                log(`正在將裝置 ${discoveredDeviceId} 綁定至帳號 ${currentAccountId}...`);
+                await registerDeviceToUser(currentAccountId, discoveredDeviceId);
 
             } catch (err) {
                 updateConnectionUI('ble', 'error', '連線失敗');
                 log(`錯誤: ${err.message}`, 'error');
+            }
+        }
+
+        // 向 Supabase 寫入 user_devices 關聯 (POST /user_devices)
+        async function registerDeviceToUser(accountId, deviceId) {
+            try {
+                const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({
+                        user_account: accountId,
+                        device_id: deviceId
+                    })
+                });
+
+                if (response.ok || response.status === 201 || response.status === 204) {
+                    log(`✅ 裝置 ${deviceId} 成功綁定至您的帳號！`, 'success');
+                    selectDevice(deviceId, deviceId);
+                    await fetchUserDevicesFromSupabase();
+                    switchTab('devices');
+                } else {
+                    const errJson = await response.json();
+                    log(`⚠️ 綁定寫入警告: ${errJson.message || '未知錯誤'}`, 'error');
+                }
+            } catch (err) {
+                log(`❌ 寫入資料庫失敗: ${err.message}`, 'error');
             }
         }
     </script>
