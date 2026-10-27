@@ -148,7 +148,7 @@
             label.textContent = text;
         }
 
-        // 🌟 核心：結合心跳時間戳（updated_at）的超時離線判斷與時間顯示邏輯
+        // 🌟 核心：修正時區偏移判斷與最後心跳時間顯示邏輯
         async function checkDeviceStatus() {
             try {
                 const response = await fetch(SUPABASE_URL, {
@@ -164,32 +164,39 @@
                 if (rows && rows.length > 0) {
                     const device = rows[0];
                     const dbStatus = device.status; // 'online' 或 'offline'
-                    const updatedAt = device.updated_at; // 帶有時區的時間戳
+                    const updatedAt = device.updated_at; // 資料庫時間戳
 
                     if (updatedAt) {
-                        // 格式化顯示最後心跳時間（強制轉為台北時區）
-                        const formattedTime = new Date(updatedAt).toLocaleString('zh-TW', {
+                        // 確保時間字串包含明確時區標示（避免未指定時區時被瀏覽器誤判定為本地時間）
+                        let isoTimeString = updatedAt;
+                        if (!isoTimeString.endsWith('Z') && !isoTimeString.includes('+') && !isoTimeString.includes('-', 10)) {
+                            isoTimeString += 'Z';
+                        }
+
+                        // 格式化顯示最後心跳時間（強制轉換為台北時區格式）
+                        const formattedTime = new Date(isoTimeString).toLocaleString('zh-TW', {
                             timeZone: 'Asia/Taipei',
                             hour12: false
                         });
                         timeTextEl.textContent = `最後心跳: ${formattedTime}`;
-                    } else {
-                        timeTextEl.textContent = '最後心跳: 無資料';
-                    }
 
-                    if (dbStatus === 'online' && updatedAt) {
-                        const lastBeatTime = new Date(updatedAt).getTime();
-                        const now = new Date().getTime();
-                        const diffSeconds = (now - lastBeatTime) / 1000;
+                        if (dbStatus === 'online') {
+                            const lastBeatTime = new Date(isoTimeString).getTime();
+                            const now = new Date().getTime();
+                            const diffSeconds = (now - lastBeatTime) / 1000;
 
-                        // 🔴 超時機制：如果超過 40 秒沒有更新心跳，即使資料庫寫 online 也強制判定為離線
-                        if (diffSeconds > 40) {
-                            updateConnectionUI('wifi', 'error', '裝置離線(逾時)');
+                            // 🔴 超時機制：如果超過 40 秒沒有更新心跳，即使資料庫寫 online 也強制判定為離線
+                            if (diffSeconds > 40) {
+                                updateConnectionUI('wifi', 'error', '裝置離線(逾時)');
+                            } else {
+                                updateConnectionUI('wifi', 'connected', '裝置線上');
+                            }
                         } else {
-                            updateConnectionUI('wifi', 'connected', '裝置線上');
+                            updateConnectionUI('wifi', 'error', '裝置離線');
                         }
                     } else {
-                        updateConnectionUI('wifi', 'error', '裝置離線');
+                        timeTextEl.textContent = '最後心跳: 無資料';
+                        updateConnectionUI('wifi', 'error', '無裝置資料');
                     }
                 } else {
                     updateConnectionUI('wifi', 'error', '無裝置資料');
