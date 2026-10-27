@@ -20,11 +20,9 @@
         ::-webkit-scrollbar {
             width: 6px;
         }
-
         ::-webkit-scrollbar-track {
             background: #0f172a;
         }
-
         ::-webkit-scrollbar-thumb {
             background: #334155;
             border-radius: 3px;
@@ -35,12 +33,10 @@
 <body class="min-h-screen flex flex-col items-center justify-start p-3 sm:p-4 md:p-6">
 
     <!-- 1. 帳號登入蓋層 (Overlay Login Portal) -->
-    <div id="login-overlay"
-        class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div id="login-overlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div class="text-center space-y-2">
-                <div
-                    class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 font-bold text-2xl mx-auto mb-3">
+                <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 font-bold text-2xl mx-auto mb-3">
                     🛏️
                 </div>
                 <h2 class="text-2xl font-extrabold text-emerald-400">東庚翻身床</h2>
@@ -66,15 +62,12 @@
     </div>
 
     <!-- 主頁面容器 -->
-    <div
-        class="max-w-xl w-full bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/80 p-4 sm:p-5 md:p-6 space-y-5">
+    <div class="max-w-xl w-full bg-slate-800/90 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/80 p-4 sm:p-5 md:p-6 space-y-5">
 
         <!-- 頂部帳號與裝置狀態列 -->
-        <div
-            class="flex items-center justify-between bg-slate-900/80 p-2.5 sm:p-3 rounded-xl border border-slate-700/60">
+        <div class="flex items-center justify-between bg-slate-900/80 p-2.5 sm:p-3 rounded-xl border border-slate-700/60">
             <div class="flex items-center space-x-2.5">
-                <div
-                    class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-base">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-base">
                     👤
                 </div>
                 <div>
@@ -115,12 +108,10 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <span id="current-device-name" class="text-xs sm:text-sm font-bold text-slate-200">未選擇裝置</span>
-                    <span id="current-device-location"
-                        class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">請配對翻身床</span>
+                    <span id="current-device-location" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">請配對翻身床</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <span id="wifi-dot"
-                        class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                    <span id="wifi-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
                     <span id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</span>
                 </div>
             </div>
@@ -132,17 +123,14 @@
 
         <!-- ==================== VIEW 1: 使用歷程 (Main History Dashboard) ==================== -->
         <div id="view-history" class="space-y-4">
-
+            
             <!-- 時間範圍切換選單 -->
             <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded-lg border border-slate-800">
                 <span class="text-xs font-semibold text-slate-300 px-2">統計時間區間</span>
                 <div class="flex gap-1 text-xs">
-                    <button id="range-today" onclick="setRange('today')"
-                        class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
-                    <button id="range-weekly" onclick="setRange('weekly')"
-                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
-                    <button id="range-monthly" onclick="setRange('monthly')"
-                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
+                    <button id="range-today" onclick="setRange('today')" class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
+                    <button id="range-weekly" onclick="setRange('weekly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
+                    <button id="range-monthly" onclick="setRange('monthly')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
                 </div>
             </div>
 
@@ -152,8 +140,7 @@
                     <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
                         <span>👈 左側翻身協助</span>
                     </div>
-                    <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span
-                            class="text-xs font-normal text-slate-400">小時</span></div>
+                    <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span class="text-xs font-normal text-slate-400">小時</span></div>
                     <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次 (固定週期)</div>
                 </div>
 
@@ -161,8 +148,7 @@
                     <div class="text-xs text-indigo-400 font-semibold flex items-center justify-center gap-1">
                         <span>👉 右側翻身協助</span>
                     </div>
-                    <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span
-                            class="text-xs font-normal text-slate-400">小時</span></div>
+                    <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span class="text-xs font-normal text-slate-400">小時</span></div>
                     <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次 (固定週期)</div>
                 </div>
             </div>
@@ -179,8 +165,7 @@
                     <canvas id="usageChart"></canvas>
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span class="text-[10px] text-slate-400">協助運作總時數</span>
-                        <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0
-                            h</span>
+                        <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0 h</span>
                     </div>
                 </div>
 
@@ -202,11 +187,9 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-bold text-slate-200">名下綁定翻身床</h2>
-                    <p class="text-[11px] text-slate-400">帳號 <span id="device-tab-account-id"
-                            class="text-emerald-400 font-mono">--</span> 專屬之裝置</p>
+                    <p class="text-[11px] text-slate-400">帳號 <span id="device-tab-account-id" class="text-emerald-400 font-mono">--</span> 專屬之裝置</p>
                 </div>
-                <button onclick="fetchUserDevicesFromSupabase()"
-                    class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                <button onclick="fetchUserDevicesFromSupabase()" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
                     <span>🔄 重新整理</span>
                 </button>
             </div>
@@ -219,14 +202,10 @@
 
         <!-- ==================== VIEW 3: Wi-Fi 配網選單 (BLE Provisioning) ==================== -->
         <div id="view-wifi" class="space-y-4 hidden">
-
+            
             <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
                 <div class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10 10 0 0114.142 0M2.828 9.9a15 15 0 0120.344 0">
-                        </path>
-                    </svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10 10 0 0114.142 0M2.828 9.9a15 15 0 0120.344 0"></path></svg>
                     發送 Wi-Fi 憑證至目標翻身床
                 </div>
 
@@ -253,17 +232,14 @@
                         <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
                         已啟用 LocalStorage 快取帶入
                     </span>
-                    <button onclick="clearCachedCredentials()"
-                        class="text-rose-400 hover:underline text-[11px]">清除快取</button>
+                    <button onclick="clearCachedCredentials()" class="text-rose-400 hover:underline text-[11px]">清除快取</button>
                 </div>
             </div>
 
             <!-- 藍牙 BLE 連線狀態 -->
-            <div
-                class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+            <div class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
                 <div class="flex items-center space-x-2">
-                    <span id="ble-dot"
-                        class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                    <span id="ble-dot" class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
                     <span id="ble-status-text" class="font-bold text-slate-300">藍牙未連線</span>
                 </div>
                 <span id="target-ble-device" class="text-[10px] text-slate-500 font-mono">目標: 掃描中自動抓取</span>
@@ -372,8 +348,8 @@
             currentAccountId = inputVal;
             localStorage.setItem('bed_account_id', currentAccountId);
             console.log("👉 目前設定的使用者 ID:", currentAccountId);
-
-            // 立即向 Supabase 寫入/確保該使用者 ID 存在（帶有完整 console log 追蹤）
+            
+            // 立即向 Supabase 寫入/確保該使用者 ID 存在
             await ensureUserRegisteredInSupabase(currentAccountId);
 
             document.getElementById('login-overlay').classList.add('hidden');
@@ -391,13 +367,13 @@
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
-
+                
                 const existingRows = await checkRes.json();
                 console.log(`[Supabase] 查詢結果:`, existingRows);
 
                 if (!existingRows || existingRows.length === 0) {
                     console.log(`[Supabase] 帳號不存在，嘗試寫入 UNBOUND 初始化紀錄...`);
-
+                    
                     const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
                         method: 'POST',
                         headers: {
@@ -408,7 +384,7 @@
                         },
                         body: JSON.stringify({
                             user_account: accountId,
-                            device_id: 'UNBOUND' // 初始化標記，不預設綁定實體床位
+                            device_id: 'UNBOUND'
                         })
                     });
 
@@ -437,18 +413,19 @@
         async function updateAccountUI() {
             document.getElementById('display-account-id').textContent = currentAccountId;
             document.getElementById('device-tab-account-id').textContent = currentAccountId;
-
+            
             await fetchUserDevicesFromSupabase();
             checkDeviceStatus();
         }
 
-        // 查詢當前帳號綁定的所有裝置（具備防呆與 400 錯誤容錯）
+        // 查詢當前帳號綁定的所有裝置（分段查詢，徹底根治 400 關聯錯誤）
         async function fetchUserDevicesFromSupabase() {
             const container = document.getElementById('device-list-container');
             container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
 
             try {
-                const url = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&select=device_id,device_status(*)`;
+                // 1. 單獨查詢 user_devices 表的 device_id，避免 JOIN 造成 400 Bad Request
+                const url = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&select=device_id`;
                 const response = await fetch(url, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -457,23 +434,33 @@
                 });
 
                 const rows = await response.json();
-
-                // 💡 防呆檢查：確保 rows 確實是陣列（如果回傳 400 或錯誤物件則當作空陣列處理）
                 const dataRows = Array.isArray(rows) ? rows : [];
 
                 // 過濾掉未綁定的 UNBOUND 紀錄
-                const validRows = dataRows.filter(r => r.device_id !== 'UNBOUND' && r.device_id);
+                const validRows = dataRows.filter(r => r.device_id && r.device_id !== 'UNBOUND');
 
                 if (response.ok && validRows.length > 0) {
-                    userDevicesList = validRows.map(r => {
-                        const statusObj = r.device_status || {};
-                        return {
-                            id: r.device_id,
+                    userDevicesList = [];
+                    for (const r of validRows) {
+                        const devId = r.device_id;
+                        // 2. 獨立查詢各裝置狀態
+                        const statusUrl = `${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(devId)}`;
+                        const statusRes = await fetch(statusUrl, {
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                            }
+                        });
+                        const statusRows = await statusRes.json();
+                        const statusObj = (Array.isArray(statusRows) && statusRows.length > 0) ? statusRows[0] : {};
+
+                        userDevicesList.push({
+                            id: devId,
                             name: statusObj.bed_label || '東庚翻身床',
                             status: statusObj.status || 'offline',
                             updated_at: statusObj.updated_at
-                        };
-                    });
+                        });
+                    }
 
                     if (userDevicesList.length > 0) {
                         const first = userDevicesList[0];
@@ -484,14 +471,14 @@
                     currentDeviceId = '';
                     document.getElementById('current-device-name').textContent = '未選擇裝置';
                     document.getElementById('current-device-location').textContent = '請配對翻身床';
-
+                    
                     container.innerHTML = `
-                <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800 text-center space-y-3">
-                    <div class="text-amber-400 text-sm font-semibold">目前尚無綁定任何翻身床</div>
-                    <p class="text-slate-400 text-xs">請點擊下方按鈕或切換至「配網設定」透過藍牙搜尋並配對新翻身床。</p>
-                    <button onclick="switchTab('wifi')" class="bg-emerald-600 text-white text-xs px-4 py-2 rounded-lg font-medium shadow">前往藍牙配網</button>
-                </div>
-            `;
+                        <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800 text-center space-y-3">
+                            <div class="text-amber-400 text-sm font-semibold">目前尚無綁定任何翻身床</div>
+                            <p class="text-slate-400 text-xs">請點擊下方按鈕或切換至「配網設定」透過藍牙搜尋並配對新翻身床。</p>
+                            <button onclick="switchTab('wifi')" class="bg-emerald-600 text-white text-xs px-4 py-2 rounded-lg font-medium shadow">前往藍牙配網</button>
+                        </div>
+                    `;
                     return;
                 }
 
@@ -510,8 +497,9 @@
             userDevicesList.forEach(dev => {
                 const isSelected = dev.id === currentDeviceId;
                 const card = document.createElement('div');
-                card.className = `p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${isSelected ? 'bg-slate-900 border-emerald-500/60 shadow-md' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
-                    }`;
+                card.className = `p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
+                    isSelected ? 'bg-slate-900 border-emerald-500/60 shadow-md' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                }`;
                 card.onclick = () => {
                     selectDevice(dev.id, dev.name);
                     renderDeviceListUI();
@@ -619,7 +607,7 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: function (context) {
+                                label: function(context) {
                                     return ` ${context.label}: ${context.raw} 小時`;
                                 }
                             }
