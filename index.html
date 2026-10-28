@@ -160,7 +160,7 @@
                     </div>
                     <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span
                             class="text-xs font-normal text-slate-400">小時</span></div>
-                    <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次 (固定週期)</div>
+                    <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
                 </div>
 
                 <div class="bg-slate-900/70 p-3.5 rounded-xl border border-indigo-500/30 text-center space-y-1">
@@ -169,7 +169,7 @@
                     </div>
                     <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span
                             class="text-xs font-normal text-slate-400">小時</span></div>
-                    <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次 (固定週期)</div>
+                    <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
                 </div>
             </div>
 
@@ -198,7 +198,7 @@
             <!-- 說明警示小卡 -->
             <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-800 text-[11px] text-slate-400 space-y-1">
                 <p class="text-slate-300 font-semibold">💡 系統說明：</p>
-                <p>本設備為協助使用者翻身與兩側減壓擺位之照護輔具。單次協助翻身維持時間為固定設定，數據即時同步自翻身床控制機卡。</p>
+                <p>本設備為協助使用者翻身與兩側減壓擺位之照護輔具。數據即時同步自 Supabase 歷史事件日誌資料庫。</p>
             </div>
 
         </div>
@@ -312,40 +312,6 @@
         let currentRange = 'today';
         let userDevicesList = [];
 
-        // 協助歷程模擬數據
-        const mockUsageData = {
-            today: {
-                labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
-                datasets: [3.5, 4.0, 16.5],
-                bgColors: ['#38bdf8', '#818cf8', '#334155'],
-                leftHours: '3.5',
-                leftCount: '7',
-                rightHours: '4.0',
-                rightCount: '8',
-                totalHours: '7.5'
-            },
-            weekly: {
-                labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
-                datasets: [24.5, 28.0, 115.5],
-                bgColors: ['#38bdf8', '#818cf8', '#334155'],
-                leftHours: '24.5',
-                leftCount: '49',
-                rightHours: '28.0',
-                rightCount: '56',
-                totalHours: '52.5'
-            },
-            monthly: {
-                labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
-                datasets: [100.0, 110.0, 510.0],
-                bgColors: ['#38bdf8', '#818cf8', '#334155'],
-                leftHours: '100.0',
-                leftCount: '200',
-                rightHours: '110.0',
-                rightCount: '220',
-                totalHours: '210.0'
-            }
-        };
-
         window.addEventListener('DOMContentLoaded', () => {
             checkLoginState();
             loadCachedCredentials();
@@ -424,7 +390,7 @@
             document.getElementById('login-overlay').classList.remove('hidden');
         }
 
-        // 刪除當前帳戶（從 Supabase 刪除該帳號的所有關聯紀錄並登出）
+        // 刪除當前帳戶
         async function deleteCurrentAccount() {
             if (!currentAccountId) return;
             if (!confirm(`確定要刪除帳戶 "${currentAccountId}" 嗎？此動作將清除所有名下紀錄。`)) return;
@@ -554,7 +520,7 @@
             }
         }
 
-        // 渲染裝置卡片列表（包含刪除按鈕）
+        // 渲染裝置卡片列表
         function renderDeviceListUI() {
             const container = document.getElementById('device-list-container');
             container.innerHTML = '';
@@ -568,6 +534,7 @@
                     selectDevice(dev.id, dev.name);
                     renderDeviceListUI();
                     checkDeviceStatus();
+                    loadUsageDataFromSupabase(currentRange);
                 };
 
                 card.innerHTML = `
@@ -599,6 +566,7 @@
             document.getElementById('current-device-name').textContent = id;
             document.getElementById('current-device-location').textContent = name;
             document.getElementById('target-ble-device').textContent = `目標: ${id}`;
+            loadUsageDataFromSupabase(currentRange);
         }
 
         // 頁籤切換
@@ -625,6 +593,7 @@
             if (tabName === 'history') {
                 historyView.classList.remove('hidden');
                 historyBtn.className = activeClass;
+                loadUsageDataFromSupabase(currentRange);
             } else if (tabName === 'devices') {
                 devicesView.classList.remove('hidden');
                 devicesBtn.className = activeClass;
@@ -646,21 +615,20 @@
                 }
             });
 
-            updateChartData(range);
+            loadUsageDataFromSupabase(range);
         }
 
         // 初始化 Chart.js 圖表
         function initChart() {
             const ctx = document.getElementById('usageChart').getContext('2d');
-            const dataConfig = mockUsageData.today;
 
             usageChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: dataConfig.labels,
+                    labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
                     datasets: [{
-                        data: dataConfig.datasets,
-                        backgroundColor: dataConfig.bgColors,
+                        data: [0, 0, 0],
+                        backgroundColor: ['#38bdf8', '#818cf8', '#334155'],
                         borderWidth: 2,
                         borderColor: '#0f172a'
                     }]
@@ -681,44 +649,98 @@
                     }
                 }
             });
-
-            updateChartData('today');
         }
 
-        // 更新數據與卡片顯示
-        function updateChartData(range) {
-            const config = mockUsageData[range];
+        // 從 Supabase 撈取真實歷程數據並更新圖表
+        async function loadUsageDataFromSupabase(range) {
+            if (!currentDeviceId) return;
 
-            document.getElementById('stat-left-hours').innerHTML = `${config.leftHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
-            document.getElementById('stat-left-count').textContent = `執行 ${config.leftCount} 次 (固定週期)`;
-
-            document.getElementById('stat-right-hours').innerHTML = `${config.rightHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
-            document.getElementById('stat-right-count').textContent = `執行 ${config.rightCount} 次 (固定週期)`;
-
-            document.getElementById('chart-center-total').textContent = `${config.totalHours} h`;
-
-            if (usageChartInstance) {
-                usageChartInstance.data.labels = config.labels;
-                usageChartInstance.data.datasets[0].data = config.datasets;
-                usageChartInstance.data.datasets[0].backgroundColor = config.bgColors;
-                usageChartInstance.update();
+            // 計算起始時間
+            const now = new Date();
+            let startDate = new Date();
+            if (range === 'today') {
+                startDate.setHours(0, 0, 0, 0);
+            } else if (range === 'weekly') {
+                startDate.setDate(now.getDate() - 7);
+            } else if (range === 'monthly') {
+                startDate.setMonth(now.getMonth() - 1);
             }
 
-            renderCustomLegend(config);
+            try {
+                // 呼叫我們剛剛建立的 v_device_session_durations 檢視表
+                const url = `${SUPABASE_BASE_URL}/v_device_session_durations?device_id=eq.${encodeURIComponent(currentDeviceId)}&start_time=gte.${startDate.toISOString()}&select=mode,duration_seconds`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                const rows = await response.json();
+                const dataRows = Array.isArray(rows) ? rows : [];
+
+                // 統計各模式秒數與次數
+                let stats = {
+                    left: { seconds: 0, count: 0 },
+                    right: { seconds: 0, count: 0 },
+                    idle: { seconds: 0, count: 0 }
+                };
+
+                dataRows.forEach(r => {
+                    const m = r.mode;
+                    const dur = Number(r.duration_seconds) || 0;
+                    if (stats[m]) {
+                        stats[m].seconds += dur;
+                        stats[m].count += 1;
+                    }
+                });
+
+                // 換算成小時 (取到小數點後 1 位)
+                const leftHours = (stats.left.seconds / 3600).toFixed(1);
+                const rightHours = (stats.right.seconds / 3600).toFixed(1);
+                const idleHours = (stats.idle.seconds / 3600).toFixed(1);
+                const totalHours = ((stats.left.seconds + stats.right.seconds + stats.idle.seconds) / 3600).toFixed(1);
+
+                // 更新前端介面 DOM
+                document.getElementById('stat-left-hours').innerHTML = `${leftHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
+                document.getElementById('stat-left-count').textContent = `執行 ${stats.left.count} 次`;
+
+                document.getElementById('stat-right-hours').innerHTML = `${rightHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
+                document.getElementById('stat-right-count').textContent = `執行 ${stats.right.count} 次`;
+
+                document.getElementById('chart-center-total').textContent = `${totalHours} h`;
+
+                // 更新 Chart.js 數據
+                if (usageChartInstance) {
+                    usageChartInstance.data.datasets[0].data = [Number(leftHours), Number(rightHours), Number(idleHours)];
+                    usageChartInstance.update();
+                }
+
+                // 更新自訂圖例
+                renderCustomLegend([
+                    { label: '左側翻身協助', hours: leftHours, color: '#38bdf8' },
+                    { label: '右側翻身協助', hours: rightHours, color: '#818cf8' },
+                    { label: '平躺 / 待機', hours: idleHours, color: '#334155' }
+                ]);
+
+            } catch (err) {
+                console.error('撈取歷程統計失敗', err);
+            }
         }
 
         // 自訂圖例
-        function renderCustomLegend(config) {
+        function renderCustomLegend(items) {
             const legendBox = document.getElementById('chart-legend-custom');
             legendBox.innerHTML = '';
-            config.labels.forEach((label, idx) => {
-                const item = document.createElement('div');
-                item.className = 'flex items-center gap-1.5';
-                item.innerHTML = `
-                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${config.bgColors[idx]}"></span>
-                    <span>${label} (${config.datasets[idx]}h)</span>
+            items.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'flex items-center gap-1.5';
+                el.innerHTML = `
+                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${item.color}"></span>
+                    <span>${item.label} (${item.hours}h)</span>
                 `;
-                legendBox.appendChild(item);
+                legendBox.appendChild(el);
             });
         }
 
@@ -913,7 +935,7 @@
         // 向 Supabase 寫入真實的 user_devices 關聯
         async function registerDeviceToUser(accountId, deviceId) {
             try {
-                const response = - await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
+                const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
                     method: 'POST',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
