@@ -173,15 +173,15 @@
                 </div>
             </div>
 
-            <!-- 新增：每日翻身時段甘特圖/橫條圖卡片 (僅在 本週/本月 顯示) -->
-            <div id="timeline-card" class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-3 hidden">
-                <div class="w-full flex justify-between items-center text-xs text-slate-400">
-                    <span id="timeline-title" class="font-bold text-slate-200">每日翻身運作時段分佈圖</span>
-                    <span class="text-[11px] text-slate-500">橫軸：當日時刻 (00:00~24:00)</span>
+            <!-- 翻身時段甘特圖卡片 (僅在 今日、本週 顯示，本月隱藏) -->
+            <div id="timeline-card" class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-2">
+                <div class="w-full flex justify-between items-center text-xs text-slate-400 px-1">
+                    <span id="timeline-title" class="font-bold text-slate-200">翻身運作時間軸</span>
+                    <span class="text-[10px] text-slate-500">當日時刻 (00~24h)</span>
                 </div>
 
                 <!-- 甘特圖 Canvas 容器 -->
-                <div id="timeline-canvas-wrapper" class="relative w-full h-64 my-1">
+                <div id="timeline-canvas-wrapper" class="relative w-full h-44 my-1">
                     <canvas id="timelineChart"></canvas>
                 </div>
 
@@ -677,7 +677,7 @@
             });
         }
 
-        // 初始化甘特圖 / 時間軸 Floating Bar Chart
+        // 初始化甘特圖 / 時間軸 Floating Bar Chart (最佳化版面空間)
         function initTimelineChart() {
             const ctx = document.getElementById('timelineChart').getContext('2d');
 
@@ -691,14 +691,14 @@
                             data: [],
                             backgroundColor: '#38bdf8',
                             borderRadius: 4,
-                            barPercentage: 0.6
+                            barPercentage: 0.65
                         },
                         {
                             label: '右側翻身',
                             data: [],
                             backgroundColor: '#818cf8',
                             borderRadius: 4,
-                            barPercentage: 0.6
+                            barPercentage: 0.65
                         }
                     ]
                 },
@@ -706,23 +706,40 @@
                     indexAxis: 'y', // 轉為橫向條形圖
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 0,
+                            right: 10,
+                            top: 0,
+                            bottom: 0
+                        }
+                    },
                     scales: {
                         x: {
                             min: 0,
                             max: 24,
-                            title: { display: true, text: '小時 (00:00 - 24:00)', color: '#94a3b8' },
                             ticks: {
                                 color: '#94a3b8',
-                                stepSize: 3,
+                                stepSize: 4,
+                                font: { size: 10 },
                                 callback: function (value) {
-                                    return value.toString().padStart(2, '0') + ':00';
+                                    return value.toString().padStart(2, '0') + 'h';
                                 }
                             },
                             grid: { color: '#334155' }
                         },
                         y: {
-                            ticks: { color: '#f8fafc', font: { size: 11 } },
-                            grid: { display: false }
+                            ticks: {
+                                color: '#cbd5e1',
+                                font: { size: 10, weight: 'bold' },
+                                padding: 4
+                            },
+                            grid: {
+                                display: true,
+                                color: '#475569', // 顯眼加強的每日界線
+                                lineWidth: 1.5,
+                                drawBorder: false
+                            }
                         }
                     },
                     plugins: {
@@ -759,15 +776,15 @@
             let startDate = new Date();
             if (range === 'today') {
                 startDate.setHours(0, 0, 0, 0);
-                timelineCard.classList.add('hidden'); // 今日隱藏甘特圖
+                timelineCard.classList.remove('hidden'); // 今日顯示甘特圖
+                document.getElementById('timeline-title').textContent = '今日翻身運作時間軸';
             } else if (range === 'weekly') {
                 startDate.setDate(now.getDate() - 7);
-                timelineCard.classList.remove('hidden');
+                timelineCard.classList.remove('hidden'); // 本週顯示甘特圖
                 document.getElementById('timeline-title').textContent = '本週每日翻身運作時段分佈圖';
             } else if (range === 'monthly') {
                 startDate.setMonth(now.getMonth() - 1);
-                timelineCard.classList.remove('hidden');
-                document.getElementById('timeline-title').textContent = '本月每日翻身運作時段分佈圖';
+                timelineCard.classList.add('hidden'); // 本月隱藏甘特圖
             }
 
             try {
@@ -824,8 +841,8 @@
                     { label: '平躺 / 待機', hours: idleHours, color: '#334155' }
                 ]);
 
-                // 2. 更新甘特圖 (Weekly / Monthly)
-                if (range !== 'today') {
+                // 2. 更新甘特圖 (Today / Weekly)
+                if (range !== 'monthly') {
                     updateTimelineChartData(range, dataRows);
                 }
 
@@ -834,29 +851,25 @@
             }
         }
 
-        // 處理甘特圖 Floating Bar 數據
+        // 處理甘特圖 Floating Bar 數據 (極小化 Y 軸佔用空間)
         function updateTimelineChartData(range, dataRows) {
             let labels = [];
             let leftBars = [];
             let rightBars = [];
 
-            const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+            const now = new Date();
 
-            if (range === 'weekly') {
-                // 建立過去 7 天的標籤 (例如：週一 10/26)
+            if (range === 'today') {
+                const labelStr = `今日 (${now.getMonth() + 1}/${now.getDate()})`;
+                labels.push(labelStr);
+            } else if (range === 'weekly') {
+                // 簡化 Y 軸文字為極短格式，節省手機橫向空間 (例如：[ "四", "10/22" ])
                 for (let i = 6; i >= 0; i--) {
                     const d = new Date();
                     d.setDate(d.getDate() - i);
-                    const labelStr = `${dayNames[d.getDay()]} (${d.getMonth() + 1}/${d.getDate()})`;
-                    labels.push(labelStr);
-                }
-            } else if (range === 'monthly') {
-                // 建立過去 30 天的標籤
-                for (let i = 29; i >= 0; i--) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    const labelStr = `${d.getMonth() + 1}/${d.getDate()}`;
-                    labels.push(labelStr);
+                    const labelArray = [`${dayNames[d.getDay()]}`, `${d.getMonth() + 1}/${d.getDate()}`];
+                    labels.push(labelArray);
                 }
             }
 
@@ -867,15 +880,17 @@
                 const start = new Date(r.start_time);
                 const end = new Date(r.end_time);
 
-                // 計算相對應的 y 軸 index
-                let dateStr = '';
-                if (range === 'weekly') {
-                    dateStr = `${dayNames[start.getDay()]} (${start.getMonth() + 1}/${start.getDate()})`;
-                } else {
-                    dateStr = `${start.getMonth() + 1}/${start.getDate()}`;
+                let labelIndex = -1;
+
+                if (range === 'today') {
+                    labelIndex = 0;
+                } else if (range === 'weekly') {
+                    const targetDayStr = `${dayNames[start.getDay()]}`;
+                    const targetDateStr = `${start.getMonth() + 1}/${start.getDate()}`;
+
+                    labelIndex = labels.findIndex(lbl => Array.isArray(lbl) && lbl[0] === targetDayStr && lbl[1] === targetDateStr);
                 }
 
-                const labelIndex = labels.indexOf(dateStr);
                 if (labelIndex !== -1) {
                     const startDec = start.getHours() + start.getMinutes() / 60;
                     const endDec = end.getHours() + end.getMinutes() / 60;
@@ -894,12 +909,11 @@
             });
 
             if (timelineChartInstance) {
-                // 動態調整容器高度（本月資料較多，增加拉長高度）
                 const wrapper = document.getElementById('timeline-canvas-wrapper');
-                if (range === 'monthly') {
-                    wrapper.style.height = '500px';
+                if (range === 'today') {
+                    wrapper.style.height = '110px';
                 } else {
-                    wrapper.style.height = '260px';
+                    wrapper.style.height = '240px';
                 }
 
                 timelineChartInstance.data.labels = labels;
