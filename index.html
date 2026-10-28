@@ -9,6 +9,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS Client SDK (Realtime 必須) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             background-color: #0f172a;
@@ -363,6 +365,9 @@
         const SUPABASE_BASE_URL = 'https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
 
+        // 初始化 Supabase Client (用於 Realtime 訂閱)
+        const supabaseClient = supabase.createClient('https://cmpndqpsxdnmqrvzhpot.supabase.co', SUPABASE_ANON_KEY);
+
         let currentAccountId = '';
         let currentDeviceId = '';
         let currentDeviceLabel = '';
@@ -417,10 +422,43 @@
             loadCachedCredentials();
             initChart();
             initTimelineChart();
+            
+            // 啟動 Supabase Realtime 即時訂閱
+            initRealtimeSubscription();
 
             // 定期更新雲端心跳狀態 (每 10 秒)
             statusInterval = setInterval(checkDeviceStatus, 10000);
         });
+
+        // --- Realtime 即時訂閱機制 ---
+        function initRealtimeSubscription() {
+            supabaseClient
+                .channel('db-changes')
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'device_sessions' },
+                    (payload) => {
+                        console.log('偵測到歷程資料變更:', payload);
+                        if (currentDeviceId) {
+                            loadUsageDataFromSupabase(currentRange);
+                            showToast("收到最新翻身歷程，圖表已更新", "info");
+                        }
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'device_status' },
+                    (payload) => {
+                        console.log('偵測到裝置狀態變更:', payload);
+                        checkDeviceStatus();
+                    }
+                )
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Supabase Realtime 訂閱成功！');
+                    }
+                });
+        }
 
         // 登入狀態檢查
         function checkLoginState() {
@@ -507,7 +545,6 @@
             const btn = document.getElementById('btn-delete-account');
 
             if (btn.dataset.confirming === "true") {
-                // 第二次點擊：真正執行刪除
                 clearTimeout(deleteConfirmTimeout);
                 btn.dataset.confirming = "false";
                 btn.innerHTML = `<span>🗑️ 刪除帳戶</span>`;
@@ -536,7 +573,6 @@
                     showToast("網路錯誤，無法刪除帳戶", "error");
                 }
             } else {
-                // 第一次點擊：進入二階段確認狀態
                 btn.dataset.confirming = "true";
                 btn.innerHTML = `<span class="text-rose-400 font-bold">⚠️ 再按一次確認</span>`;
 
@@ -552,7 +588,6 @@
             if (event) event.stopPropagation();
 
             if (btnElement && btnElement.dataset.confirming === "true") {
-                // 真正執行解除綁定
                 try {
                     const deleteUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&device_id=eq.${encodeURIComponent(deviceId)}`;
                     const response = await fetch(deleteUrl, {
@@ -574,7 +609,6 @@
                     showToast("網路錯誤，無法解除綁定", "error");
                 }
             } else if (btnElement) {
-                // 第一次點擊提示確認
                 btnElement.dataset.confirming = "true";
                 btnElement.innerHTML = `⚠️ 確認解除`;
                 setTimeout(() => {
@@ -761,7 +795,7 @@
             loadUsageDataFromSupabase(range);
         }
 
-        // 初始化圓餅圖 (修復 Tooltip 置頂與事件穿透)
+        // 初始化圓餅圖
         function initChart() {
             const ctx = document.getElementById('usageChart').getContext('2d');
 
@@ -784,7 +818,7 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            z: 9999, // 強制設定繪製順序於最上層
+                            z: 9999,
                             backgroundColor: '#020617',
                             titleColor: '#f8fafc',
                             bodyColor: '#cbd5e1',
@@ -803,7 +837,7 @@
             });
         }
 
-        // 初始化甘特圖 / 時間軸 (單一資料集，左右側合併在同一軸)
+        // 初始化甘特圖 / 時間軸
         function initTimelineChart() {
             const ctx = document.getElementById('timelineChart').getContext('2d');
 
@@ -815,14 +849,14 @@
                         {
                             label: '翻身運作時段',
                             data: [],
-                            backgroundColor: [], // 動態依據類型賦予顏色
+                            backgroundColor: [],
                             borderRadius: 4,
                             barPercentage: 0.55
                         }
                     ]
                 },
                 options: {
-                    indexAxis: 'y', // 轉為橫向條形圖
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
@@ -887,7 +921,6 @@
 
             const timelineCard = document.getElementById('timeline-card');
             
-            // 計算嚴格的時間區間
             const now = new Date();
             let startDate = new Date();
             let endDate = new Date(now);
@@ -897,8 +930,7 @@
                 timelineCard.classList.remove('hidden');
                 document.getElementById('timeline-title').textContent = '今日翻身運作時間軸';
             } else if (range === 'weekly') {
-                // 本週：當週日到週六
-                const dayOfWeek = now.getDay(); // 0 (週日) ~ 6 (週六)
+                const dayOfWeek = now.getDay();
                 startDate.setDate(now.getDate() - dayOfWeek);
                 startDate.setHours(0, 0, 0, 0);
 
@@ -908,11 +940,10 @@
                 timelineCard.classList.remove('hidden');
                 document.getElementById('timeline-title').textContent = '本週 (週日~週六) 翻身運作時段';
             } else if (range === 'monthly') {
-                // 本月：1號到月底
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-                timelineCard.classList.add('hidden'); // 本月隱藏甘特圖
+                timelineCard.classList.add('hidden');
             }
 
             try {
@@ -928,7 +959,6 @@
                 const rows = await response.json();
                 const dataRows = Array.isArray(rows) ? rows : [];
 
-                // 1. 圓餅圖統計
                 let stats = {
                     left: { seconds: 0, count: 0 },
                     right: { seconds: 0, count: 0 },
@@ -968,7 +998,6 @@
                     { label: '平躺 / 待機', hours: idleHours, color: '#334155' }
                 ]);
 
-                // 2. 更新甘特圖 (Today / Weekly)
                 if (range !== 'monthly') {
                     updateTimelineChartData(range, dataRows, startDate);
                 }
@@ -978,17 +1007,15 @@
             }
         }
 
-        // 處理甘特圖數據 (單一軸合併顯示左右側)
+        // 處理甘特圖數據
         function updateTimelineChartData(range, dataRows, startDateRef) {
             let labels = [];
-
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
             const now = new Date();
 
             if (range === 'today') {
                 labels.push([`今日`, `${now.getMonth() + 1}/${now.getDate()}`]);
             } else if (range === 'weekly') {
-                // 本週：固定從週日到週六（共 7 天）
                 for (let i = 0; i < 7; i++) {
                     const d = new Date(startDateRef);
                     d.setDate(d.getDate() + i);
@@ -996,14 +1023,12 @@
                 }
             }
 
-            // 依據 labels 建立對應的空資料結構
             let dayIntervalsMap = {};
             labels.forEach((lbl, idx) => {
                 const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
                 dayIntervalsMap[key] = { index: idx, bars: [], count: 0 };
             });
 
-            // 收集並歸類每筆事件
             dataRows.forEach(r => {
                 if (!r.start_time || !r.end_time || r.mode === 'idle') return;
 
@@ -1021,7 +1046,7 @@
                 }
 
                 if (dayIntervalsMap[key]) {
-                    dayIntervalsMap[key].count += 1; // 累加次數
+                    dayIntervalsMap[key].count += 1;
                     const startDec = start.getHours() + start.getMinutes() / 60;
                     const endDec = end.getHours() + end.getMinutes() / 60;
                     const modeLabel = r.mode === 'left' ? '左側翻身' : '右側翻身';
@@ -1046,7 +1071,6 @@
 
                 timelineChartInstance.data.labels = labels;
                 
-                // 重新組合成 Chart.js 支援的 Floating Bar 陣列格式
                 let flattenedBars = [];
                 let flattenedColors = [];
 
