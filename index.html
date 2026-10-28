@@ -130,8 +130,7 @@
                     <span id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</span>
                 </div>
             </div>
-            <div class="text-[11px] text-slate-400 flex justify-between items-center pt-1 border-t border-slate-800">
-                <span id="update-time-text">最後心跳: --</span>
+            <div class="text-[11px] text-slate-400 flex justify-end items-center pt-1 border-t border-slate-800">
                 <span class="text-[10px] text-slate-500 font-mono">Asia/Taipei</span>
             </div>
         </div>
@@ -152,24 +151,54 @@
                 </div>
             </div>
 
-            <!-- 關鍵統計數據卡片 -->
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-slate-900/70 p-3.5 rounded-xl border border-sky-500/30 text-center space-y-1">
-                    <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
-                        <span>👈 左側翻身協助</span>
+            <!-- 關鍵統計數據與圓餅圖整合卡片 -->
+            <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 space-y-4">
+                <!-- 上半部：關鍵統計數據區塊 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-800/60 p-3.5 rounded-xl border border-sky-500/30 text-center space-y-1">
+                        <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
+                            <span>👈 左側翻身協助</span>
+                        </div>
+                        <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span
+                                class="text-xs font-normal text-slate-400">小時</span></div>
+                        <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
                     </div>
-                    <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span
-                            class="text-xs font-normal text-slate-400">小時</span></div>
-                    <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
+
+                    <div class="bg-slate-800/60 p-3.5 rounded-xl border border-indigo-500/30 text-center space-y-1">
+                        <div class="text-xs text-indigo-400 font-semibold flex items-center justify-center gap-1">
+                            <span>👉 右側翻身協助</span>
+                        </div>
+                        <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span
+                                class="text-xs font-normal text-slate-400">小時</span></div>
+                        <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
+                    </div>
                 </div>
 
-                <div class="bg-slate-900/70 p-3.5 rounded-xl border border-indigo-500/30 text-center space-y-1">
-                    <div class="text-xs text-indigo-400 font-semibold flex items-center justify-center gap-1">
-                        <span>👉 右側翻身協助</span>
+                <!-- 分隔線 -->
+                <div class="border-t border-slate-800/80"></div>
+
+                <!-- 下半部：圓餅圖區塊 -->
+                <div class="flex flex-col items-center space-y-3">
+                    <div class="w-full flex justify-between items-center text-xs text-slate-400">
+                        <span id="chart-title" class="font-bold text-slate-200">翻身模式時間佔比</span>
+                        <span id="chart-unit" class="text-[11px] text-slate-500">單位：小時</span>
                     </div>
-                    <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span
-                            class="text-xs font-normal text-slate-400">小時</span></div>
-                    <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
+
+                    <!-- 圓餅 / 環形圖 Canvas -->
+                    <div class="relative w-44 h-44 sm:w-52 sm:h-52 my-1">
+                        <!-- 圖表 Canvas -->
+                        <canvas id="usageChart" class="relative z-0"></canvas>
+                        <!-- 中央總時數文字 (預設不阻擋滑鼠 event，圖層置於底層) -->
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                            <span class="text-[10px] text-slate-400">協助運作總時數</span>
+                            <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0
+                                h</span>
+                        </div>
+                    </div>
+
+                    <div id="chart-legend-custom" class="flex flex-wrap justify-center gap-3 text-xs text-slate-300 pt-1">
+                        <!-- 由 JS 動態生成 Legend -->
+                    </div>
                 </div>
             </div>
 
@@ -195,34 +224,6 @@
                         <span>右側翻身</span>
                     </div>
                 </div>
-            </div>
-
-            <!-- 圖表卡片區塊 (圓餅圖) -->
-            <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 flex flex-col items-center space-y-3">
-                <div class="w-full flex justify-between items-center text-xs text-slate-400">
-                    <span id="chart-title" class="font-bold text-slate-200">翻身模式時間佔比</span>
-                    <span id="chart-unit" class="text-[11px] text-slate-500">單位：小時</span>
-                </div>
-
-                <!-- 圓餅 / 環形圖 Canvas -->
-                <div class="relative w-44 h-44 sm:w-52 sm:h-52 my-1">
-                    <canvas id="usageChart"></canvas>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span class="text-[10px] text-slate-400">協助運作總時數</span>
-                        <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0
-                            h</span>
-                    </div>
-                </div>
-
-                <div id="chart-legend-custom" class="flex flex-wrap justify-center gap-3 text-xs text-slate-300 pt-1">
-                    <!-- 由 JS 動態生成 Legend -->
-                </div>
-            </div>
-
-            <!-- 說明警示小卡 -->
-            <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-800 text-[11px] text-slate-400 space-y-1">
-                <p class="text-slate-300 font-semibold">💡 系統說明：</p>
-                <p>本設備為協助使用者翻身與兩側減壓擺位之照護輔具。數據即時同步自 Supabase 歷史事件日誌資料庫。</p>
             </div>
 
         </div>
@@ -369,13 +370,20 @@
             currentAccountId = inputVal;
             localStorage.setItem('bed_account_id', currentAccountId);
 
-            await ensureUserRegisteredInSupabase(currentAccountId);
+            const isNewUser = await ensureUserRegisteredInSupabase(currentAccountId);
 
             document.getElementById('login-overlay').classList.add('hidden');
             updateAccountUI();
+
+            // 新舊使用者差異化提示
+            if (isNewUser) {
+                alert(`已新增使用者 ${currentAccountId}`);
+            } else {
+                alert(`${currentAccountId} 已登入`);
+            }
         }
 
-        // 確保使用者代碼寫入資料庫
+        // 確保使用者代碼寫入資料庫 (回傳是否為新使用者)
         async function ensureUserRegisteredInSupabase(accountId) {
             try {
                 const checkUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(accountId)}`;
@@ -402,9 +410,12 @@
                             device_id: 'UNBOUND'
                         })
                     });
+                    return true; // 新增使用者
                 }
+                return false; // 既有使用者
             } catch (err) {
                 console.error('寫入例外錯誤:', err);
+                return false;
             }
         }
 
@@ -666,6 +677,7 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            z: 9999, // 強制設定繪製順序於最上層
                             callbacks: {
                                 label: function (context) {
                                     return ` ${context.label}: ${context.raw} 小時`;
@@ -737,7 +749,11 @@
                                 label: function (ctx) {
                                     const raw = ctx.raw;
                                     if (raw && raw.intervals) {
-                                        return raw.intervals.map(inv => ` ${inv.mode}: ${inv.timeStr}`);
+                                        let lines = raw.intervals.map(inv => ` ${inv.mode}: ${inv.timeStr}`);
+                                        if (raw.totalCount !== undefined) {
+                                            lines.push(` 累積執行次數: ${raw.totalCount} 次`);
+                                        }
+                                        return lines;
                                     }
                                     return '';
                                 }
@@ -848,8 +864,6 @@
         // 處理甘特圖數據 (單一軸合併顯示左右側)
         function updateTimelineChartData(range, dataRows, startDateRef) {
             let labels = [];
-            let chartDataPoints = [];
-            let backgroundColors = [];
 
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
             const now = new Date();
@@ -869,7 +883,7 @@
             let dayIntervalsMap = {};
             labels.forEach((lbl, idx) => {
                 const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
-                dayIntervalsMap[key] = { index: idx, bars: [] };
+                dayIntervalsMap[key] = { index: idx, bars: [], count: 0 };
             });
 
             // 收集並歸類每筆事件
@@ -890,6 +904,7 @@
                 }
 
                 if (dayIntervalsMap[key]) {
+                    dayIntervalsMap[key].count += 1; // 累加次數
                     const startDec = start.getHours() + start.getMinutes() / 60;
                     const endDec = end.getHours() + end.getMinutes() / 60;
                     const modeLabel = r.mode === 'left' ? '左側翻身' : '右側翻身';
@@ -904,24 +919,6 @@
                 }
             });
 
-            // 組合給 Chart.js 的格式 (支援 Chart.js 陣列 bar 或多重背景)
-            let finalData = [];
-            let finalColors = [];
-
-            labels.forEach(lbl => {
-                const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
-                const entry = dayIntervalsMap[key];
-                
-                if (entry && entry.bars.length > 0) {
-                    // 如果當天有多個區段，我們取第一個或合併，此處以第一個區段或陣列呈現
-                    finalData.push(entry.bars.map(b => b.x));
-                    finalColors.push(entry.bars.map(b => b.color));
-                } else {
-                    finalData.push([]);
-                    finalColors.push('#334155');
-                }
-            });
-
             if (timelineChartInstance) {
                 const wrapper = document.getElementById('timeline-canvas-wrapper');
                 if (range === 'today') {
@@ -931,7 +928,6 @@
                 }
 
                 timelineChartInstance.data.labels = labels;
-                timelineChartInstance.data.datasets[0].data = dayIntervalsMap; // 調整為直接對應
                 
                 // 重新組合成 Chart.js 支援的 Floating Bar 陣列格式
                 let flattenedBars = [];
@@ -945,7 +941,8 @@
                             flattenedBars.push({
                                 x: b.x,
                                 y: lbl,
-                                intervals: [b]
+                                intervals: [b],
+                                totalCount: entry.count
                             });
                             flattenedColors.push(b.color);
                         });
@@ -1012,7 +1009,6 @@
         async function checkDeviceStatus() {
             if (!currentDeviceId) {
                 updateConnectionUI('wifi', 'error', '未選取裝置');
-                document.getElementById('update-time-text').textContent = '最後心跳: --';
                 return;
             }
 
@@ -1025,7 +1021,6 @@
                     }
                 });
                 const rows = await response.json();
-                const timeTextEl = document.getElementById('update-time-text');
 
                 if (rows && rows.length > 0) {
                     const device = rows[0];
@@ -1042,12 +1037,6 @@
                             isoTimeString += 'Z';
                         }
 
-                        const formattedTime = new Date(isoTimeString).toLocaleString('zh-TW', {
-                            timeZone: 'Asia/Taipei',
-                            hour12: false
-                        });
-                        timeTextEl.textContent = `最後心跳: ${formattedTime}`;
-
                         if (dbStatus === 'online') {
                             const lastBeatTime = new Date(isoTimeString).getTime();
                             const now = new Date().getTime();
@@ -1062,12 +1051,10 @@
                             updateConnectionUI('wifi', 'error', '裝置離線');
                         }
                     } else {
-                        timeTextEl.textContent = '最後心跳: 無資料';
                         updateConnectionUI('wifi', 'error', '無裝置資料');
                     }
                 } else {
                     updateConnectionUI('wifi', 'error', '無裝置資料');
-                    timeTextEl.textContent = '最後心跳: 無資料';
                 }
             } catch (err) {
                 console.error('狀態查詢失敗', err);
