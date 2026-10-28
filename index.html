@@ -677,7 +677,7 @@
             });
         }
 
-        // 初始化甘特圖 / 時間軸 Floating Bar Chart (最佳化版面空間)
+        // 初始化甘特圖 / 時間軸 (單一資料集，左右側合並在同一軸)
         function initTimelineChart() {
             const ctx = document.getElementById('timelineChart').getContext('2d');
 
@@ -687,18 +687,11 @@
                     labels: [],
                     datasets: [
                         {
-                            label: '左側翻身',
+                            label: '翻身運作時段',
                             data: [],
-                            backgroundColor: '#38bdf8',
+                            backgroundColor: [], // 動態依據類型賦予顏色
                             borderRadius: 4,
-                            barPercentage: 0.65
-                        },
-                        {
-                            label: '右側翻身',
-                            data: [],
-                            backgroundColor: '#818cf8',
-                            borderRadius: 4,
-                            barPercentage: 0.65
+                            barPercentage: 0.55
                         }
                     ]
                 },
@@ -707,12 +700,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
-                        padding: {
-                            left: 0,
-                            right: 10,
-                            top: 0,
-                            bottom: 0
-                        }
+                        padding: { left: 0, right: 10, top: 0, bottom: 0 }
                     },
                     scales: {
                         x: {
@@ -736,7 +724,7 @@
                             },
                             grid: {
                                 display: true,
-                                color: '#475569', // 顯眼加強的每日界線
+                                color: '#475569',
                                 lineWidth: 1.5,
                                 drawBorder: false
                             }
@@ -747,14 +735,9 @@
                         tooltip: {
                             callbacks: {
                                 label: function (ctx) {
-                                    const val = ctx.raw;
-                                    if (Array.isArray(val)) {
-                                        const startH = Math.floor(val[0]);
-                                        const startM = Math.round((val[0] - startH) * 60);
-                                        const endH = Math.floor(val[1]);
-                                        const endM = Math.round((val[1] - endH) * 60);
-                                        const timeStr = `${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')} ~ ${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-                                        return ` ${ctx.dataset.label}: ${timeStr}`;
+                                    const raw = ctx.raw;
+                                    if (raw && raw.intervals) {
+                                        return raw.intervals.map(inv => ` ${inv.mode}: ${inv.timeStr}`);
                                     }
                                     return '';
                                 }
@@ -771,25 +754,36 @@
 
             const timelineCard = document.getElementById('timeline-card');
             
-            // 計算起始時間
+            // 計算嚴格的時間區間
             const now = new Date();
             let startDate = new Date();
+            let endDate = new Date(now);
+
             if (range === 'today') {
                 startDate.setHours(0, 0, 0, 0);
-                timelineCard.classList.remove('hidden'); // 今日顯示甘特圖
+                timelineCard.classList.remove('hidden');
                 document.getElementById('timeline-title').textContent = '今日翻身運作時間軸';
             } else if (range === 'weekly') {
-                startDate.setDate(now.getDate() - 7);
-                timelineCard.classList.remove('hidden'); // 本週顯示甘特圖
-                document.getElementById('timeline-title').textContent = '本週每日翻身運作時段分佈圖';
+                // 本週：當週日到週六
+                const dayOfWeek = now.getDay(); // 0 (週日) ~ 6 (週六)
+                startDate.setDate(now.getDate() - dayOfWeek);
+                startDate.setHours(0, 0, 0, 0);
+
+                endDate.setDate(startDate.getDate() + 6);
+                endDate.setHours(23, 59, 59, 999);
+
+                timelineCard.classList.remove('hidden');
+                document.getElementById('timeline-title').textContent = '本週 (週日~週六) 翻身運作時段';
             } else if (range === 'monthly') {
-                startDate.setMonth(now.getMonth() - 1);
+                // 本月：1號到月底
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
                 timelineCard.classList.add('hidden'); // 本月隱藏甘特圖
             }
 
             try {
-                // 撈取原始 v_device_session_durations view
-                const url = `${SUPABASE_BASE_URL}/v_device_session_durations?device_id=eq.${encodeURIComponent(currentDeviceId)}&start_time=gte.${startDate.toISOString()}&select=mode,start_time,end_time,duration_seconds`;
+                const url = `${SUPABASE_BASE_URL}/v_device_session_durations?device_id=eq.${encodeURIComponent(currentDeviceId)}&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=mode,start_time,end_time,duration_seconds`;
                 
                 const response = await fetch(url, {
                     headers: {
@@ -843,7 +837,7 @@
 
                 // 2. 更新甘特圖 (Today / Weekly)
                 if (range !== 'monthly') {
-                    updateTimelineChartData(range, dataRows);
+                    updateTimelineChartData(range, dataRows, startDate);
                 }
 
             } catch (err) {
@@ -851,60 +845,80 @@
             }
         }
 
-        // 處理甘特圖 Floating Bar 數據 (極小化 Y 軸佔用空間)
-        function updateTimelineChartData(range, dataRows) {
+        // 處理甘特圖數據 (單一軸合併顯示左右側)
+        function updateTimelineChartData(range, dataRows, startDateRef) {
             let labels = [];
-            let leftBars = [];
-            let rightBars = [];
+            let chartDataPoints = [];
+            let backgroundColors = [];
 
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
             const now = new Date();
 
             if (range === 'today') {
-                const labelStr = `今日 (${now.getMonth() + 1}/${now.getDate()})`;
-                labels.push(labelStr);
+                labels.push([`今日`, `${now.getMonth() + 1}/${now.getDate()}`]);
             } else if (range === 'weekly') {
-                // 簡化 Y 軸文字為極短格式，節省手機橫向空間 (例如：[ "四", "10/22" ])
-                for (let i = 6; i >= 0; i--) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    const labelArray = [`${dayNames[d.getDay()]}`, `${d.getMonth() + 1}/${d.getDate()}`];
-                    labels.push(labelArray);
+                // 本週：固定從週日到週六（共 7 天）
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(startDateRef);
+                    d.setDate(d.getDate() + i);
+                    labels.push([`週${dayNames[d.getDay()]}`, `${d.getMonth() + 1}/${d.getDate()}`]);
                 }
             }
 
-            // 解析各筆事件轉換為當日 0~24 小時小數
+            // 依據 labels 建立對應的空資料結構
+            let dayIntervalsMap = {};
+            labels.forEach((lbl, idx) => {
+                const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
+                dayIntervalsMap[key] = { index: idx, bars: [] };
+            });
+
+            // 收集並歸類每筆事件
             dataRows.forEach(r => {
                 if (!r.start_time || !r.end_time || r.mode === 'idle') return;
 
                 const start = new Date(r.start_time);
                 const end = new Date(r.end_time);
 
-                let labelIndex = -1;
-
+                const targetDayStr = `週${dayNames[start.getDay()]}`;
+                const targetDateStr = `${start.getMonth() + 1}/${start.getDate()}`;
+                
+                let key = '';
                 if (range === 'today') {
-                    labelIndex = 0;
-                } else if (range === 'weekly') {
-                    const targetDayStr = `${dayNames[start.getDay()]}`;
-                    const targetDateStr = `${start.getMonth() + 1}/${start.getDate()}`;
-
-                    labelIndex = labels.findIndex(lbl => Array.isArray(lbl) && lbl[0] === targetDayStr && lbl[1] === targetDateStr);
+                    key = labels[0].join('-');
+                } else {
+                    key = `${targetDayStr}-${targetDateStr}`;
                 }
 
-                if (labelIndex !== -1) {
+                if (dayIntervalsMap[key]) {
                     const startDec = start.getHours() + start.getMinutes() / 60;
                     const endDec = end.getHours() + end.getMinutes() / 60;
+                    const modeLabel = r.mode === 'left' ? '左側翻身' : '右側翻身';
+                    const timeStr = `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')} ~ ${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`;
 
-                    const barData = {
+                    dayIntervalsMap[key].bars.push({
                         x: [startDec, endDec],
-                        y: labels[labelIndex]
-                    };
+                        color: r.mode === 'left' ? '#38bdf8' : '#818cf8',
+                        mode: modeLabel,
+                        timeStr: timeStr
+                    });
+                }
+            });
 
-                    if (r.mode === 'left') {
-                        leftBars.push(barData);
-                    } else if (r.mode === 'right') {
-                        rightBars.push(barData);
-                    }
+            // 組合給 Chart.js 的格式 (支援 Chart.js 陣列 bar 或多重背景)
+            let finalData = [];
+            let finalColors = [];
+
+            labels.forEach(lbl => {
+                const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
+                const entry = dayIntervalsMap[key];
+                
+                if (entry && entry.bars.length > 0) {
+                    // 如果當天有多個區段，我們取第一個或合併，此處以第一個區段或陣列呈現
+                    finalData.push(entry.bars.map(b => b.x));
+                    finalColors.push(entry.bars.map(b => b.color));
+                } else {
+                    finalData.push([]);
+                    finalColors.push('#334155');
                 }
             });
 
@@ -913,12 +927,33 @@
                 if (range === 'today') {
                     wrapper.style.height = '110px';
                 } else {
-                    wrapper.style.height = '240px';
+                    wrapper.style.height = '260px';
                 }
 
                 timelineChartInstance.data.labels = labels;
-                timelineChartInstance.data.datasets[0].data = leftBars;
-                timelineChartInstance.data.datasets[1].data = rightBars;
+                timelineChartInstance.data.datasets[0].data = dayIntervalsMap; // 調整為直接對應
+                
+                // 重新組合成 Chart.js 支援的 Floating Bar 陣列格式
+                let flattenedBars = [];
+                let flattenedColors = [];
+
+                labels.forEach(lbl => {
+                    const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
+                    const entry = dayIntervalsMap[key];
+                    if (entry && entry.bars.length > 0) {
+                        entry.bars.forEach(b => {
+                            flattenedBars.push({
+                                x: b.x,
+                                y: lbl,
+                                intervals: [b]
+                            });
+                            flattenedColors.push(b.color);
+                        });
+                    }
+                });
+
+                timelineChartInstance.data.datasets[0].data = flattenedBars;
+                timelineChartInstance.data.datasets[0].backgroundColor = flattenedColors;
                 timelineChartInstance.update();
             }
         }
