@@ -173,7 +173,31 @@
                 </div>
             </div>
 
-            <!-- 圖表卡片區塊 -->
+            <!-- 新增：每日翻身時段甘特圖/橫條圖卡片 (僅在 本週/本月 顯示) -->
+            <div id="timeline-card" class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-3 hidden">
+                <div class="w-full flex justify-between items-center text-xs text-slate-400">
+                    <span id="timeline-title" class="font-bold text-slate-200">每日翻身運作時段分佈圖</span>
+                    <span class="text-[11px] text-slate-500">橫軸：當日時刻 (00:00~24:00)</span>
+                </div>
+
+                <!-- 甘特圖 Canvas 容器 -->
+                <div id="timeline-canvas-wrapper" class="relative w-full h-64 my-1">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+
+                <div class="flex justify-center gap-4 text-xs text-slate-300 pt-1">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded bg-sky-400 inline-block"></span>
+                        <span>左側翻身</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded bg-indigo-400 inline-block"></span>
+                        <span>右側翻身</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 圖表卡片區塊 (圓餅圖) -->
             <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 flex flex-col items-center space-y-3">
                 <div class="w-full flex justify-between items-center text-xs text-slate-400">
                     <span id="chart-title" class="font-bold text-slate-200">翻身模式時間佔比</span>
@@ -309,6 +333,7 @@
         let currentDeviceLabel = '';
         let statusInterval = null;
         let usageChartInstance = null;
+        let timelineChartInstance = null;
         let currentRange = 'today';
         let userDevicesList = [];
 
@@ -316,6 +341,7 @@
             checkLoginState();
             loadCachedCredentials();
             initChart();
+            initTimelineChart();
 
             // 定期更新雲端心跳狀態 (每 10 秒)
             statusInterval = setInterval(checkDeviceStatus, 10000);
@@ -618,7 +644,7 @@
             loadUsageDataFromSupabase(range);
         }
 
-        // 初始化 Chart.js 圖表
+        // 初始化圓餅圖
         function initChart() {
             const ctx = document.getElementById('usageChart').getContext('2d');
 
@@ -651,24 +677,102 @@
             });
         }
 
+        // 初始化甘特圖 / 時間軸 Floating Bar Chart
+        function initTimelineChart() {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+
+            timelineChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: '左側翻身',
+                            data: [],
+                            backgroundColor: '#38bdf8',
+                            borderRadius: 4,
+                            barPercentage: 0.6
+                        },
+                        {
+                            label: '右側翻身',
+                            data: [],
+                            backgroundColor: '#818cf8',
+                            borderRadius: 4,
+                            barPercentage: 0.6
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y', // 轉為橫向條形圖
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: 24,
+                            title: { display: true, text: '小時 (00:00 - 24:00)', color: '#94a3b8' },
+                            ticks: {
+                                color: '#94a3b8',
+                                stepSize: 3,
+                                callback: function (value) {
+                                    return value.toString().padStart(2, '0') + ':00';
+                                }
+                            },
+                            grid: { color: '#334155' }
+                        },
+                        y: {
+                            ticks: { color: '#f8fafc', font: { size: 11 } },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    const val = ctx.raw;
+                                    if (Array.isArray(val)) {
+                                        const startH = Math.floor(val[0]);
+                                        const startM = Math.round((val[0] - startH) * 60);
+                                        const endH = Math.floor(val[1]);
+                                        const endM = Math.round((val[1] - endH) * 60);
+                                        const timeStr = `${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')} ~ ${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                                        return ` ${ctx.dataset.label}: ${timeStr}`;
+                                    }
+                                    return '';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // 從 Supabase 撈取真實歷程數據並更新圖表
         async function loadUsageDataFromSupabase(range) {
             if (!currentDeviceId) return;
 
+            const timelineCard = document.getElementById('timeline-card');
+            
             // 計算起始時間
             const now = new Date();
             let startDate = new Date();
             if (range === 'today') {
                 startDate.setHours(0, 0, 0, 0);
+                timelineCard.classList.add('hidden'); // 今日隱藏甘特圖
             } else if (range === 'weekly') {
                 startDate.setDate(now.getDate() - 7);
+                timelineCard.classList.remove('hidden');
+                document.getElementById('timeline-title').textContent = '本週每日翻身運作時段分佈圖';
             } else if (range === 'monthly') {
                 startDate.setMonth(now.getMonth() - 1);
+                timelineCard.classList.remove('hidden');
+                document.getElementById('timeline-title').textContent = '本月每日翻身運作時段分佈圖';
             }
 
             try {
-                // 呼叫我們剛剛建立的 v_device_session_durations 檢視表
-                const url = `${SUPABASE_BASE_URL}/v_device_session_durations?device_id=eq.${encodeURIComponent(currentDeviceId)}&start_time=gte.${startDate.toISOString()}&select=mode,duration_seconds`;
+                // 撈取原始 v_device_session_durations view
+                const url = `${SUPABASE_BASE_URL}/v_device_session_durations?device_id=eq.${encodeURIComponent(currentDeviceId)}&start_time=gte.${startDate.toISOString()}&select=mode,start_time,end_time,duration_seconds`;
                 
                 const response = await fetch(url, {
                     headers: {
@@ -680,7 +784,7 @@
                 const rows = await response.json();
                 const dataRows = Array.isArray(rows) ? rows : [];
 
-                // 統計各模式秒數與次數
+                // 1. 圓餅圖統計
                 let stats = {
                     left: { seconds: 0, count: 0 },
                     right: { seconds: 0, count: 0 },
@@ -696,13 +800,11 @@
                     }
                 });
 
-                // 換算成小時 (取到小數點後 1 位)
                 const leftHours = (stats.left.seconds / 3600).toFixed(1);
                 const rightHours = (stats.right.seconds / 3600).toFixed(1);
                 const idleHours = (stats.idle.seconds / 3600).toFixed(1);
                 const totalHours = ((stats.left.seconds + stats.right.seconds + stats.idle.seconds) / 3600).toFixed(1);
 
-                // 更新前端介面 DOM
                 document.getElementById('stat-left-hours').innerHTML = `${leftHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
                 document.getElementById('stat-left-count').textContent = `執行 ${stats.left.count} 次`;
 
@@ -711,21 +813,99 @@
 
                 document.getElementById('chart-center-total').textContent = `${totalHours} h`;
 
-                // 更新 Chart.js 數據
                 if (usageChartInstance) {
                     usageChartInstance.data.datasets[0].data = [Number(leftHours), Number(rightHours), Number(idleHours)];
                     usageChartInstance.update();
                 }
 
-                // 更新自訂圖例
                 renderCustomLegend([
                     { label: '左側翻身協助', hours: leftHours, color: '#38bdf8' },
                     { label: '右側翻身協助', hours: rightHours, color: '#818cf8' },
                     { label: '平躺 / 待機', hours: idleHours, color: '#334155' }
                 ]);
 
+                // 2. 更新甘特圖 (Weekly / Monthly)
+                if (range !== 'today') {
+                    updateTimelineChartData(range, dataRows);
+                }
+
             } catch (err) {
                 console.error('撈取歷程統計失敗', err);
+            }
+        }
+
+        // 處理甘特圖 Floating Bar 數據
+        function updateTimelineChartData(range, dataRows) {
+            let labels = [];
+            let leftBars = [];
+            let rightBars = [];
+
+            const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+
+            if (range === 'weekly') {
+                // 建立過去 7 天的標籤 (例如：週一 10/26)
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    const labelStr = `${dayNames[d.getDay()]} (${d.getMonth() + 1}/${d.getDate()})`;
+                    labels.push(labelStr);
+                }
+            } else if (range === 'monthly') {
+                // 建立過去 30 天的標籤
+                for (let i = 29; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    const labelStr = `${d.getMonth() + 1}/${d.getDate()}`;
+                    labels.push(labelStr);
+                }
+            }
+
+            // 解析各筆事件轉換為當日 0~24 小時小數
+            dataRows.forEach(r => {
+                if (!r.start_time || !r.end_time || r.mode === 'idle') return;
+
+                const start = new Date(r.start_time);
+                const end = new Date(r.end_time);
+
+                // 計算相對應的 y 軸 index
+                let dateStr = '';
+                if (range === 'weekly') {
+                    dateStr = `${dayNames[start.getDay()]} (${start.getMonth() + 1}/${start.getDate()})`;
+                } else {
+                    dateStr = `${start.getMonth() + 1}/${start.getDate()}`;
+                }
+
+                const labelIndex = labels.indexOf(dateStr);
+                if (labelIndex !== -1) {
+                    const startDec = start.getHours() + start.getMinutes() / 60;
+                    const endDec = end.getHours() + end.getMinutes() / 60;
+
+                    const barData = {
+                        x: [startDec, endDec],
+                        y: labels[labelIndex]
+                    };
+
+                    if (r.mode === 'left') {
+                        leftBars.push(barData);
+                    } else if (r.mode === 'right') {
+                        rightBars.push(barData);
+                    }
+                }
+            });
+
+            if (timelineChartInstance) {
+                // 動態調整容器高度（本月資料較多，增加拉長高度）
+                const wrapper = document.getElementById('timeline-canvas-wrapper');
+                if (range === 'monthly') {
+                    wrapper.style.height = '500px';
+                } else {
+                    wrapper.style.height = '260px';
+                }
+
+                timelineChartInstance.data.labels = labels;
+                timelineChartInstance.data.datasets[0].data = leftBars;
+                timelineChartInstance.data.datasets[1].data = rightBars;
+                timelineChartInstance.update();
             }
         }
 
