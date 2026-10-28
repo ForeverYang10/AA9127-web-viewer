@@ -436,7 +436,7 @@
                 .channel('db-changes')
                 .on(
                     'postgres_changes',
-                    { event: 'INSERT', schema: 'public', table: 'device_sessions' },
+                    { event: 'INSERT', schema: 'public', table: 'device_logs' },
                     (payload) => {
                         console.log('偵測到歷程資料變更:', payload);
                         if (currentDeviceId) {
