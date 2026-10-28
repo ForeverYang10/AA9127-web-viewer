@@ -29,14 +29,48 @@
             background: #334155;
             border-radius: 3px;
         }
+
+        /* Toast Animation */
+        @keyframes slideIn {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+        }
+
+        .toast-enter {
+            animation: slideIn 0.25s ease-out forwards;
+        }
+
+        .toast-exit {
+            animation: slideOut 0.2s ease-in forwards;
+        }
     </style>
 </head>
 
-<body class="min-h-screen flex flex-col items-center justify-start p-3 sm:p-4 md:p-6">
+<body class="min-h-screen flex flex-col items-center justify-start p-3 sm:p-4 md:p-6 relative">
+
+    <!-- 自訂 Toast 提示容器 -->
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center space-y-2 pointer-events-none w-11/12 max-w-sm"></div>
 
     <!-- 1. 帳號登入蓋層 (Overlay Login Portal) -->
     <div id="login-overlay"
-        class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        class="fixed inset-0 z-40 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div class="text-center space-y-2">
                 <div
@@ -87,7 +121,7 @@
                     class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
                     <span>🔄 切換</span>
                 </button>
-                <button onclick="deleteCurrentAccount()"
+                <button id="btn-delete-account" onclick="deleteCurrentAccount()"
                     class="bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/60 text-rose-300 hover:text-rose-200 px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
                     <span>🗑️ 刪除帳戶</span>
                 </button>
@@ -124,638 +158,538 @@
                     <span id="current-device-location"
                         class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">請配對翻身床</span>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <span id="wifi-dot"
-                        class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
-                    <span id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</span>
+                <div class="flex items-center space-x-1.5">
+                    <span id="status-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                    <span id="status-text" class="text-xs font-semibold text-slate-400">未連線</span>
                 </div>
             </div>
-            <div class="text-[11px] text-slate-400 flex justify-end items-center pt-1 border-t border-slate-800">
-                <span class="text-[10px] text-slate-500 font-mono">Asia/Taipei</span>
+            <div class="text-[11px] text-slate-400 font-mono flex justify-between items-center pt-1 border-t border-slate-800">
+                <span>MAC: <span id="current-device-mac" class="text-slate-300">--:--:--:--:--:--</span></span>
             </div>
         </div>
 
-        <!-- ==================== VIEW 1: 使用歷程 (Main History Dashboard) ==================== -->
+        <!-- TAB 1: 使用歷程內容 (View History) -->
         <div id="view-history" class="space-y-4">
 
-            <!-- 時間範圍切換選單 -->
-            <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded-lg border border-slate-800">
-                <span class="text-xs font-semibold text-slate-300 px-2">統計時間區間</span>
-                <div class="flex gap-1 text-xs">
-                    <button id="range-today" onclick="setRange('today')"
-                        class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
-                    <button id="range-weekly" onclick="setRange('weekly')"
-                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
-                    <button id="range-monthly" onclick="setRange('monthly')"
-                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
+            <!-- 1. 甘特圖卡片 (移至最上方) -->
+            <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-1.5">
+                        <span>⏱️ 24小時動作甘特圖</span>
+                    </h2>
+                    <span class="text-[11px] text-slate-400">當日即時時序</span>
+                </div>
+                <div class="relative h-44 w-full">
+                    <canvas id="ganttChart"></canvas>
+                </div>
+                <div class="flex justify-around text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+                    <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>左側翻身</div>
+                    <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>右側翻身</div>
+                    <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>平躺放鬆</div>
                 </div>
             </div>
 
-            <!-- 關鍵統計數據與圓餅圖整合卡片 -->
+            <!-- 2. 合併卡片：關鍵統計數據 (上方) + 使用比例圓餅圖 (下方) -->
+            <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 space-y-5">
+                <!-- 上方：關鍵統計數據 -->
+                <div class="space-y-3">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-1.5">
+                        <span>📈 今日運作關鍵數據</span>
+                    </h2>
+                    <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/50 text-center">
+                            <div class="text-[11px] text-slate-400 mb-0.5">總翻身次數</div>
+                            <div id="stat-turns" class="text-base sm:text-lg font-bold text-emerald-400">-- 次</div>
+                        </div>
+                        <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/50 text-center">
+                            <div class="text-[11px] text-slate-400 mb-0.5">運作總時數</div>
+                            <div id="stat-hours" class="text-base sm:text-lg font-bold text-blue-400">-- 小時</div>
+                        </div>
+                        <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/50 text-center">
+                            <div class="text-[11px] text-slate-400 mb-0.5">平均週期</div>
+                            <div id="stat-cycle" class="text-base sm:text-lg font-bold text-amber-400">-- 分鐘</div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800" />
+
+                <!-- 下方：使用比例圓餅圖 -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-1.5">
+                            <span>🍕 姿勢時間比例統計</span>
+                        </h2>
+                        <span class="text-[11px] text-slate-400">百分比分佈</span>
+                    </div>
+                    <div class="relative h-52 w-full flex items-center justify-center">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TAB 2: 裝置清單 (View Devices) -->
+        <div id="view-devices" class="hidden space-y-4">
+            <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-200">已綁定之翻身床裝置</h2>
+                    <span id="device-count-badge"
+                        class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">0
+                        台</span>
+                </div>
+                <div id="device-list-container" class="space-y-2.5 pt-1">
+                    <!-- 裝置動態列表將插入於此 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: 配網設定 (View WiFi Provisioning) -->
+        <div id="view-wifi" class="hidden space-y-4">
             <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 space-y-4">
-                <!-- 上半部：關鍵統計數據區塊 -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-slate-800/60 p-3.5 rounded-xl border border-sky-500/30 text-center space-y-1">
-                        <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
-                            <span>👈 左側翻身協助</span>
+                <div class="border-b border-slate-800 pb-2">
+                    <h2 class="text-sm font-bold text-slate-200">藍牙 BLE 新增配網與綁定</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">請開啟手機藍牙，靠近翻身床控制器進行設定</p>
+                </div>
+
+                <div id="ble-step-1" class="space-y-3">
+                    <button id="btn-ble-scan" onclick="startBLEScan()"
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/20 text-sm flex items-center justify-center gap-2">
+                        <span>🔍 搜尋周邊翻身床裝置</span>
+                    </button>
+                </div>
+
+                <div id="ble-step-2" class="hidden space-y-3 pt-2">
+                    <div class="bg-slate-800/90 p-3 rounded-lg border border-slate-700 space-y-3">
+                        <div class="text-xs font-semibold text-slate-300">選擇欲連線的 Wi-Fi 網路</div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Wi-Fi SSID (名稱)</label>
+                            <input id="wifi-ssid" type="text" placeholder="例如: Home_Wi-Fi_5G"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500">
                         </div>
-                        <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span
-                                class="text-xs font-normal text-slate-400">小時</span></div>
-                        <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
-                    </div>
-
-                    <div class="bg-slate-800/60 p-3.5 rounded-xl border border-indigo-500/30 text-center space-y-1">
-                        <div class="text-xs text-indigo-400 font-semibold flex items-center justify-center gap-1">
-                            <span>👉 右側翻身協助</span>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Wi-Fi 密碼</label>
+                            <input id="wifi-pass" type="password" placeholder="請輸入密碼"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500">
                         </div>
-                        <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span
-                                class="text-xs font-normal text-slate-400">小時</span></div>
-                        <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
-                    </div>
-                </div>
-
-                <!-- 分隔線 -->
-                <div class="border-t border-slate-800/80"></div>
-
-                <!-- 下半部：圓餅圖區塊 -->
-                <div class="flex flex-col items-center space-y-3">
-                    <div class="w-full flex justify-between items-center text-xs text-slate-400">
-                        <span id="chart-title" class="font-bold text-slate-200">翻身模式時間佔比</span>
-                        <span id="chart-unit" class="text-[11px] text-slate-500">單位：小時</span>
-                    </div>
-
-                    <!-- 圓餅 / 環形圖 Canvas -->
-                    <div class="relative w-44 h-44 sm:w-52 sm:h-52 my-1">
-                        <!-- 圖表 Canvas -->
-                        <canvas id="usageChart" class="relative z-0"></canvas>
-                        <!-- 中央總時數文字 (預設不阻擋滑鼠 event，圖層置於底層) -->
-                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
-                            <span class="text-[10px] text-slate-400">協助運作總時數</span>
-                            <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0
-                                h</span>
-                        </div>
-                    </div>
-
-                    <div id="chart-legend-custom" class="flex flex-wrap justify-center gap-3 text-xs text-slate-300 pt-1">
-                        <!-- 由 JS 動態生成 Legend -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- 翻身時段甘特圖卡片 (僅在 今日、本週 顯示，本月隱藏) -->
-            <div id="timeline-card" class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-2">
-                <div class="w-full flex justify-between items-center text-xs text-slate-400 px-1">
-                    <span id="timeline-title" class="font-bold text-slate-200">翻身運作時間軸</span>
-                    <span class="text-[10px] text-slate-500">當日時刻 (00~24h)</span>
-                </div>
-
-                <!-- 甘特圖 Canvas 容器 -->
-                <div id="timeline-canvas-wrapper" class="relative w-full h-44 my-1">
-                    <canvas id="timelineChart"></canvas>
-                </div>
-
-                <div class="flex justify-center gap-4 text-xs text-slate-300 pt-1">
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded bg-sky-400 inline-block"></span>
-                        <span>左側翻身</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded bg-indigo-400 inline-block"></span>
-                        <span>右側翻身</span>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- ==================== VIEW 2: 裝置清單 (Devices Tab) ==================== -->
-        <div id="view-devices" class="space-y-4 hidden">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-sm font-bold text-slate-200">名下綁定翻身床</h2>
-                    <p class="text-[11px] text-slate-400">帳號 <span id="device-tab-account-id"
-                            class="text-emerald-400 font-mono">--</span> 專屬之裝置</p>
-                </div>
-                <button onclick="fetchUserDevicesFromSupabase()"
-                    class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
-                    <span>🔄 重新整理</span>
-                </button>
-            </div>
-
-            <!-- 動態渲染裝置列表 -->
-            <div id="device-list-container" class="space-y-2.5">
-                <div class="text-center py-6 text-slate-500 text-xs">載入中...</div>
-            </div>
-        </div>
-
-        <!-- ==================== VIEW 3: Wi-Fi 配網選單 (BLE Provisioning) ==================== -->
-        <div id="view-wifi" class="space-y-4 hidden">
-
-            <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
-                <div class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10 10 0 0114.142 0M2.828 9.9a15 15 0 0120.344 0">
-                        </path>
-                    </svg>
-                    發送 Wi-Fi 憑證至目標翻身床
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 名稱 (SSID)</label>
-                    <input id="wifi-ssid" type="text" placeholder="請輸入無線網路名稱"
-                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
-                    <div class="relative">
-                        <input id="wifi-pass" type="password" placeholder="請輸入無線網路密碼"
-                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm pr-12">
-                        <button type="button" id="toggle-pass-btn" onclick="togglePassVisibility()"
-                            class="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-200">
-                            顯示
+                        <button onclick="sendWiFiCredentials()"
+                            class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition text-xs flex items-center justify-center gap-1.5">
+                            <span>📡 送出配網資料並完成綁定</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-                    <span class="flex items-center gap-1.5 text-[11px]">
-                        <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
-                        已啟用 LocalStorage 快取帶入
-                    </span>
-                    <button onclick="clearCachedCredentials()"
-                        class="text-rose-400 hover:underline text-[11px]">清除快取</button>
+                <!-- 配網與連線訊息紀錄 log -->
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">配網日誌 LOG</div>
+                    <div id="wifi-log" class="text-[11px] font-mono text-slate-400 h-20 overflow-y-auto space-y-1">
+                        <div>> 系統就緒，等待進行藍牙掃描...</div>
+                    </div>
                 </div>
             </div>
-
-            <!-- 藍牙 BLE 連線狀態 -->
-            <div
-                class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
-                <div class="flex items-center space-x-2">
-                    <span id="ble-dot"
-                        class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
-                    <span id="ble-status-text" class="font-bold text-slate-300">藍牙未連線</span>
-                </div>
-                <span id="target-ble-device" class="text-[10px] text-slate-500 font-mono">目標: 掃描中自動抓取</span>
-            </div>
-
-            <!-- 連線觸發按鈕 -->
-            <button onclick="startBLEProvisioning()"
-                class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 text-sm">
-                <span>🔍 搜尋藍牙並傳送 Wi-Fi 設定</span>
-            </button>
-
-            <!-- 藍牙通訊狀態 Log -->
-            <div class="space-y-1">
-                <div class="text-[11px] text-slate-400 font-medium px-1">配網通訊紀錄：</div>
-                <div id="status-log"
-                    class="bg-slate-900/90 rounded-xl p-3 text-xs font-mono text-slate-300 border border-slate-800 h-28 overflow-y-auto space-y-1">
-                    <div class="text-slate-500">> 系統就緒，等待開始配網...</div>
-                </div>
-            </div>
-
         </div>
 
     </div>
 
-    <!-- 邏輯處理腳本 -->
     <script>
-        // BLE 相關 UUID
-        const SERVICE_UUID = '090de95a-079a-42e1-bde7-78f4b98728c0';
-        const CHAR_RX_UUID = '090de95a-079a-42e1-bde7-78f4b98728c1';
+        // --- 狀態管理 State Management ---
+        let currentAccountId = localStorage.getItem("donggeng_account_id") || "";
+        let mockDevices = [];
+        let currentSelectedDeviceId = "";
 
-        // Supabase REST Endpoint 基礎位置
-        const SUPABASE_BASE_URL = 'https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
+        // Chart instances
+        let ganttChartInstance = null;
+        let pieChartInstance = null;
 
-        let currentAccountId = '';
-        let currentDeviceId = '';
-        let currentDeviceLabel = '';
-        let statusInterval = null;
-        let usageChartInstance = null;
-        let timelineChartInstance = null;
-        let currentRange = 'today';
-        let userDevicesList = [];
+        // 二次確認按鈕計時器
+        let deleteConfirmTimeout = null;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            checkLoginState();
-            loadCachedCredentials();
-            initChart();
-            initTimelineChart();
+        // --- 字串截斷工具 ---
+        function truncateAccountId(id, maxLength = 10) {
+            if (!id) return "";
+            return id.length > maxLength ? id.substring(0, maxLength) + "..." : id;
+        }
 
-            // 定期更新雲端心跳狀態 (每 10 秒)
-            statusInterval = setInterval(checkDeviceStatus, 10000);
+        // --- 自訂 Toast 提示系統 ---
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+
+            let bgBorder = "bg-slate-900/95 border-emerald-500/50 text-emerald-300";
+            let icon = "✨";
+
+            if (type === "success") {
+                bgBorder = "bg-slate-900/95 border-emerald-500 text-emerald-400";
+                icon = "✅";
+            } else if (type === "error") {
+                bgBorder = "bg-slate-900/95 border-rose-500/80 text-rose-300";
+                icon = "⚠️";
+            } else if (type === "info") {
+                bgBorder = "bg-slate-900/95 border-blue-500/80 text-blue-300";
+                icon = "ℹ️";
+            }
+
+            toast.className = `toast-enter pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-2xl backdrop-blur-md text-xs font-semibold ${bgBorder}`;
+            toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove("toast-enter");
+                toast.classList.add("toast-exit");
+                setTimeout(() => {
+                    toast.remove();
+                }, 200);
+            }, 2500);
+        }
+
+        // --- 初始化 Application Init ---
+        window.addEventListener("DOMContentLoaded", () => {
+            initCharts();
+            if (currentAccountId) {
+                loginWithAccount(currentAccountId, false);
+            } else {
+                document.getElementById("login-overlay").classList.remove("hidden");
+            }
         });
 
-        // 登入狀態檢查
-        function checkLoginState() {
-            const savedAccount = localStorage.getItem('bed_account_id');
-            if (savedAccount && savedAccount.trim() !== '') {
-                currentAccountId = savedAccount;
-                document.getElementById('login-overlay').classList.add('hidden');
-                updateAccountUI();
-            } else {
-                currentAccountId = '';
-                document.getElementById('login-overlay').classList.remove('hidden');
-            }
-        }
-
-        // 登入表單處理
-        async function handleLogin(e) {
+        // --- 帳號登入與切換處理 ---
+        function handleLogin(e) {
             e.preventDefault();
-            const inputVal = document.getElementById('input-account-id').value.trim();
+            const inputVal = document.getElementById("input-account-id").value.trim();
             if (!inputVal) return;
-
-            currentAccountId = inputVal;
-            localStorage.setItem('bed_account_id', currentAccountId);
-
-            const isNewUser = await ensureUserRegisteredInSupabase(currentAccountId);
-
-            document.getElementById('login-overlay').classList.add('hidden');
-            updateAccountUI();
-
-            // 新舊使用者差異化提示
-            if (isNewUser) {
-                alert(`已新增使用者 ${currentAccountId}`);
-            } else {
-                alert(`${currentAccountId} 已登入`);
-            }
+            loginWithAccount(inputVal, true);
         }
 
-        // 確保使用者代碼寫入資料庫 (回傳是否為新使用者)
-        async function ensureUserRegisteredInSupabase(accountId) {
-            try {
-                const checkUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(accountId)}`;
-                const checkRes = await fetch(checkUrl, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
+        function loginWithAccount(accountId, isUserSubmitted = true) {
+            const isNewAccount = !localStorage.getItem(`donggeng_user_data_${accountId}`);
+            currentAccountId = accountId;
+            localStorage.setItem("donggeng_account_id", accountId);
 
-                const existingRows = await checkRes.json();
+            document.getElementById("display-account-id").innerText = truncateAccountId(accountId);
+            document.getElementById("login-overlay").classList.add("hidden");
 
-                if (!existingRows || existingRows.length === 0) {
-                    await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
-                        method: 'POST',
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify({
-                            user_account: accountId,
-                            device_id: 'UNBOUND'
-                        })
-                    });
-                    return true; // 新增使用者
+            // 載入該帳號之 Mock 裝置資料
+            loadUserDevices(accountId);
+
+            if (isUserSubmitted) {
+                const truncatedName = truncateAccountId(accountId);
+                if (isNewAccount) {
+                    showToast(`已新增使用者 ${truncatedName}`, "success");
+                } else {
+                    showToast(`${truncatedName} 已登入`, "info");
                 }
-                return false; // 既有使用者
-            } catch (err) {
-                console.error('寫入例外錯誤:', err);
-                return false;
             }
         }
 
-        // 切換帳號
         function switchAccount() {
-            localStorage.removeItem('bed_account_id');
-            currentAccountId = '';
-            document.getElementById('input-account-id').value = '';
-            document.getElementById('login-overlay').classList.remove('hidden');
+            document.getElementById("login-overlay").classList.remove("hidden");
+            document.getElementById("input-account-id").value = "";
+            document.getElementById("input-account-id").focus();
         }
 
-        // 刪除當前帳戶
-        async function deleteCurrentAccount() {
-            if (!currentAccountId) return;
-            if (!confirm(`確定要刪除帳戶 "${currentAccountId}" 嗎？此動作將清除所有名下紀錄。`)) return;
+        // 免原生 confirm 的二次點擊刪除帳戶機制
+        function deleteCurrentAccount() {
+            const btn = document.getElementById("btn-delete-account");
 
-            try {
-                const deleteUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}`;
-                const response = await fetch(deleteUrl, {
-                    method: 'DELETE',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
+            if (btn.dataset.confirming === "true") {
+                // 第二次點擊：真正執行刪除
+                clearTimeout(deleteConfirmTimeout);
+                btn.dataset.confirming = "false";
+                btn.innerHTML = `<span>🗑️ 刪除帳戶</span>`;
 
-                if (response.ok || response.status === 204) {
-                    alert(`帳戶 ${currentAccountId} 已成功刪除。`);
-                    switchAccount();
-                } else {
-                    alert('刪除帳戶失敗，請稍後再試。');
-                }
-            } catch (err) {
-                console.error('刪除帳戶發生錯誤:', err);
-                alert('網路錯誤，無法刪除帳戶。');
+                const targetAccountId = currentAccountId;
+                const truncatedName = truncateAccountId(targetAccountId);
+
+                localStorage.removeItem(`donggeng_user_data_${targetAccountId}`);
+                localStorage.removeItem("donggeng_account_id");
+                currentAccountId = "";
+
+                document.getElementById("display-account-id").innerText = "未登入";
+                mockDevices = [];
+                renderDeviceList();
+                updateDeviceHeaderUI(null);
+
+                document.getElementById("login-overlay").classList.remove("hidden");
+                showToast(`已刪除帳號 ${truncatedName}`, "error");
+            } else {
+                // 第一次點擊：進入確認狀態
+                btn.dataset.confirming = "true";
+                btn.innerHTML = `<span class="text-rose-400 font-bold">⚠️ 再按一次確認</span>`;
+
+                deleteConfirmTimeout = setTimeout(() => {
+                    btn.dataset.confirming = "false";
+                    btn.innerHTML = `<span>🗑️ 刪除帳戶</span>`;
+                }, 3000);
             }
         }
 
-        // 解除單一裝置綁定
-        async function removeDeviceBinding(deviceId, event) {
-            if (event) event.stopPropagation();
-            if (!confirm(`確定要將裝置 ${deviceId} 從您的帳號中解除綁定嗎？`)) return;
+        // 載入與模擬帳號資料
+        function loadUserDevices(accountId) {
+            const stored = localStorage.getItem(`donggeng_user_data_${accountId}`);
+            if (stored) {
+                mockDevices = JSON.parse(stored);
+            } else {
+                mockDevices = [
+                    { id: "dev_01", name: "翻身床 - 主臥室", mac: "AA:BB:CC:11:22:33", location: "主臥", isOnline: true },
+                    { id: "dev_02", name: "翻身床 - 孝親房", mac: "AA:BB:CC:44:55:66", location: "2F 孝親房", isOnline: false }
+                ];
+                saveUserDevices();
+            }
 
-            try {
-                const deleteUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&device_id=eq.${encodeURIComponent(deviceId)}`;
-                const response = await fetch(deleteUrl, {
-                    method: 'DELETE',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
+            renderDeviceList();
 
-                if (response.ok || response.status === 204) {
-                    alert(`裝置 ${deviceId} 已成功解除綁定。`);
-                    await fetchUserDevicesFromSupabase();
-                } else {
-                    alert('解除綁定失敗。');
-                }
-            } catch (err) {
-                console.error('解除裝置綁定發生錯誤:', err);
-                alert('網路錯誤，無法解除綁定。');
+            if (mockDevices.length > 0) {
+                selectDevice(mockDevices[0].id);
+            } else {
+                updateDeviceHeaderUI(null);
             }
         }
 
-        // 更新 UI 帳號資訊並發起 Supabase 裝置清單查詢
-        async function updateAccountUI() {
-            document.getElementById('display-account-id').textContent = currentAccountId;
-            document.getElementById('device-tab-account-id').textContent = currentAccountId;
-
-            await fetchUserDevicesFromSupabase();
-            checkDeviceStatus();
-        }
-
-        // 查詢當前帳號綁定的所有裝置
-        async function fetchUserDevicesFromSupabase() {
-            const container = document.getElementById('device-list-container');
-            container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
-
-            try {
-                const url = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&select=device_id`;
-                const response = await fetch(url, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-
-                const rows = await response.json();
-                const dataRows = Array.isArray(rows) ? rows : [];
-                const validRows = dataRows.filter(r => r.device_id && r.device_id !== 'UNBOUND');
-
-                if (response.ok && validRows.length > 0) {
-                    userDevicesList = [];
-                    for (const r of validRows) {
-                        const devId = r.device_id;
-                        const statusUrl = `${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(devId)}`;
-                        const statusRes = await fetch(statusUrl, {
-                            headers: {
-                                'apikey': SUPABASE_ANON_KEY,
-                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                            }
-                        });
-                        const statusRows = await statusRes.json();
-                        const statusObj = (Array.isArray(statusRows) && statusRows.length > 0) ? statusRows[0] : {};
-
-                        userDevicesList.push({
-                            id: devId,
-                            name: statusObj.bed_label || '東庚翻身床',
-                            status: statusObj.status || 'offline',
-                            updated_at: statusObj.updated_at
-                        });
-                    }
-
-                    if (userDevicesList.length > 0) {
-                        const first = userDevicesList[0];
-                        selectDevice(first.id, first.name);
-                    }
-                } else {
-                    userDevicesList = [];
-                    currentDeviceId = '';
-                    document.getElementById('current-device-name').textContent = '未選擇裝置';
-                    document.getElementById('current-device-location').textContent = '請配對翻身床';
-
-                    container.innerHTML = `
-                        <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800 text-center space-y-3">
-                            <div class="text-amber-400 text-sm font-semibold">目前尚無綁定任何翻身床</div>
-                            <p class="text-slate-400 text-xs">請點擊下方按鈕或切換至「配網設定」透過藍牙搜尋並配對新翻身床。</p>
-                            <button onclick="switchTab('wifi')" class="bg-emerald-600 text-white text-xs px-4 py-2 rounded-lg font-medium shadow">前往藍牙配網</button>
-                        </div>
-                    `;
-                    return;
-                }
-
-                renderDeviceListUI();
-            } catch (err) {
-                console.error('Supabase 裝置清單查詢失敗', err);
-                container.innerHTML = '<div class="text-center py-4 text-rose-400 text-xs">資料庫連線失敗，請檢查網路連線。</div>';
+        function saveUserDevices() {
+            if (currentAccountId) {
+                localStorage.setItem(`donggeng_user_data_${currentAccountId}`, JSON.stringify(mockDevices));
             }
         }
 
-        // 渲染裝置卡片列表
-        function renderDeviceListUI() {
-            const container = document.getElementById('device-list-container');
-            container.innerHTML = '';
+        function renderDeviceList() {
+            const container = document.getElementById("device-list-container");
+            const badge = document.getElementById("device-count-badge");
+            badge.innerText = `${mockDevices.length} 台`;
 
-            userDevicesList.forEach(dev => {
-                const isSelected = dev.id === currentDeviceId;
-                const card = document.createElement('div');
-                card.className = `p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${isSelected ? 'bg-slate-900 border-emerald-500/60 shadow-md' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
-                    }`;
-                card.onclick = () => {
-                    selectDevice(dev.id, dev.name);
-                    renderDeviceListUI();
-                    checkDeviceStatus();
-                    loadUsageDataFromSupabase(currentRange);
-                };
-
-                card.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <div class="w-9 h-9 rounded-lg ${isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'} flex items-center justify-center font-bold text-sm">
-                            🛏️
-                        </div>
-                        <div>
-                            <div class="text-xs font-bold text-slate-200">${dev.name}</div>
-                            <div class="text-[10px] text-slate-400 font-mono">${dev.id}</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-[10px] ${dev.status === 'online' ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded">
-                            ${dev.status === 'online' ? '線上運作' : '離線'}
-                        </span>
-                        <button onclick="removeDeviceBinding('${dev.id}', event)" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 px-2 py-1 rounded text-[11px] transition">
-                            🗑️ 解除
-                        </button>
+            if (mockDevices.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-6 text-slate-500 text-xs">
+                        尚無任何綁定裝置，請前往「配網設定」新增
                     </div>
                 `;
-                container.appendChild(card);
-            });
+                return;
+            }
+
+            container.innerHTML = mockDevices.map(dev => {
+                const isSelected = dev.id === currentSelectedDeviceId;
+                return `
+                    <div onclick="selectDevice('${dev.id}')" class="cursor-pointer p-3 rounded-xl border transition-all ${isSelected ? 'bg-emerald-950/30 border-emerald-500/80 shadow-md' : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-800'} flex items-center justify-between">
+                        <div class="space-y-0.5">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-bold ${isSelected ? 'text-emerald-400' : 'text-slate-200'}">${dev.name}</span>
+                                <span class="text-[9px] bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700/80">${dev.location}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 font-mono">MAC: ${dev.mac}</div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${dev.isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-700/50 text-slate-400'}">
+                                ${dev.isOnline ? '在線' : '離線'}
+                            </span>
+                            <button onclick="unbindDevice(event, '${dev.id}')" class="text-xs text-slate-500 hover:text-rose-400 p-1">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
         }
 
-        function selectDevice(id, name) {
-            currentDeviceId = id;
-            currentDeviceLabel = name;
-            document.getElementById('current-device-name').textContent = id;
-            document.getElementById('current-device-location').textContent = name;
-            document.getElementById('target-ble-device').textContent = `目標: ${id}`;
-            loadUsageDataFromSupabase(currentRange);
+        function selectDevice(devId) {
+            currentSelectedDeviceId = devId;
+            const dev = mockDevices.find(d => d.id === devId);
+            updateDeviceHeaderUI(dev);
+            renderDeviceList();
+            updateChartDataMock();
         }
 
-        // 頁籤切換
-        function switchTab(tabName) {
-            const historyView = document.getElementById('view-history');
-            const devicesView = document.getElementById('view-devices');
-            const wifiView = document.getElementById('view-wifi');
+        function updateDeviceHeaderUI(dev) {
+            if (!dev) {
+                document.getElementById("current-device-name").innerText = "未選擇裝置";
+                document.getElementById("current-device-location").innerText = "請配對翻身床";
+                document.getElementById("current-device-mac").innerText = "--:--:--:--:--:--";
+                document.getElementById("status-indicator").className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+                document.getElementById("status-text").innerText = "未連線";
+                document.getElementById("status-text").className = "text-xs font-semibold text-slate-400";
+                return;
+            }
 
-            const historyBtn = document.getElementById('tab-history-btn');
-            const devicesBtn = document.getElementById('tab-devices-btn');
-            const wifiBtn = document.getElementById('tab-wifi-btn');
+            document.getElementById("current-device-name").innerText = dev.name;
+            document.getElementById("current-device-location").innerText = dev.location;
+            document.getElementById("current-device-mac").innerText = dev.mac;
 
-            historyView.classList.add('hidden');
-            devicesView.classList.add('hidden');
-            wifiView.classList.add('hidden');
-
-            const inactiveClass = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
-            const activeClass = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
-
-            historyBtn.className = inactiveClass;
-            devicesBtn.className = inactiveClass;
-            wifiBtn.className = inactiveClass;
-
-            if (tabName === 'history') {
-                historyView.classList.remove('hidden');
-                historyBtn.className = activeClass;
-                loadUsageDataFromSupabase(currentRange);
-            } else if (tabName === 'devices') {
-                devicesView.classList.remove('hidden');
-                devicesBtn.className = activeClass;
-            } else if (tabName === 'wifi') {
-                wifiView.classList.remove('hidden');
-                wifiBtn.className = activeClass;
+            if (dev.isOnline) {
+                document.getElementById("status-indicator").className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                document.getElementById("status-text").innerText = "連線中";
+                document.getElementById("status-text").className = "text-xs font-semibold text-emerald-400";
+            } else {
+                document.getElementById("status-indicator").className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+                document.getElementById("status-text").innerText = "離線";
+                document.getElementById("status-text").className = "text-xs font-semibold text-slate-400";
             }
         }
 
-        // 時間區間切換
-        function setRange(range) {
-            currentRange = range;
-            ['today', 'weekly', 'monthly'].forEach(r => {
-                const btn = document.getElementById(`range-${r}`);
-                if (r === range) {
-                    btn.className = "px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-                } else {
-                    btn.className = "px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800";
-                }
-            });
-
-            loadUsageDataFromSupabase(range);
+        function unbindDevice(e, devId) {
+            e.stopPropagation();
+            mockDevices = mockDevices.filter(d => d.id !== devId);
+            saveUserDevices();
+            if (currentSelectedDeviceId === devId) {
+                currentSelectedDeviceId = mockDevices.length > 0 ? mockDevices[0].id : "";
+                updateDeviceHeaderUI(mockDevices.length > 0 ? mockDevices[0] : null);
+            }
+            renderDeviceList();
+            showToast("已解除綁定裝置", "info");
         }
 
-        // 初始化圓餅圖
-        function initChart() {
-            const ctx = document.getElementById('usageChart').getContext('2d');
+        // --- 頁籤切換邏輯 ---
+        function switchTab(tabName) {
+            const tabs = ['history', 'devices', 'wifi'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}-btn`);
+                const view = document.getElementById(`view-${t}`);
+                if (t === tabName) {
+                    btn.className = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
+                    view.classList.remove("hidden");
+                } else {
+                    btn.className = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+                    view.classList.add("hidden");
+                }
+            });
+        }
 
-            usageChartInstance = new Chart(ctx, {
+        // --- BLE 配網模擬邏輯 ---
+        function startBLEScan() {
+            appendLog("開啟 BLE 藍牙掃描中...");
+            setTimeout(() => {
+                appendLog("找到裝置: [DongGeng_Bed_88A2]");
+                appendLog("已建立 BLE 安全通道，請輸入目標 Wi-Fi 資訊");
+                document.getElementById("ble-step-2").classList.remove("hidden");
+            }, 1200);
+        }
+
+        function sendWiFiCredentials() {
+            const ssid = document.getElementById("wifi-ssid").value;
+            if (!ssid) {
+                showToast("請輸入 Wi-Fi 名稱 (SSID)", "error");
+                return;
+            }
+            appendLog(`傳送 Wi-Fi 設定: ${ssid}...`);
+            setTimeout(() => {
+                appendLog("翻身床成功連線至 Wi-Fi 路由器！");
+                appendLog("完成雲端 binding 綁定作業！");
+
+                // 新增裝置
+                const newDev = {
+                    id: `dev_${Date.now()}`,
+                    name: `翻身床 - ${ssid}`,
+                    mac: `AA:BB:CC:${Math.floor(Math.random() * 89 + 10)}:11:22`,
+                    location: "新區域",
+                    isOnline: true
+                };
+                mockDevices.push(newDev);
+                saveUserDevices();
+                selectDevice(newDev.id);
+
+                showToast("配網成功，已加入裝置清單", "success");
+                switchTab("devices");
+            }, 1500);
+        }
+
+        function appendLog(msg) {
+            const logBox = document.getElementById("wifi-log");
+            const timeStr = new Date().toTimeString().split(' ')[0];
+            const div = document.createElement("div");
+            div.innerText = `> [${timeStr}] ${msg}`;
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // --- Chart.js 圖表繪製與置頂 Tooltip Plugin 調整 ---
+        function initCharts() {
+            // 中央文字外掛 (使用 afterDraw 僅繪製文字，不會遮擋畫在最上層的 Tooltip)
+            const doughnutTextPlugin = {
+                id: 'doughnutText',
+                afterDraw(chart) {
+                    if (chart.config.type !== 'doughnut') return;
+                    const { ctx, chartArea: { width, height, top, left } } = chart;
+                    ctx.save();
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('14.5 小時', left + width / 2, top + height / 2 - 8);
+
+                    ctx.font = '11px sans-serif';
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillText('總運作時間', left + width / 2, top + height / 2 + 12);
+                    ctx.restore();
+                }
+            };
+
+            // 1. 圓餅圖 (Doughnut)
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            pieChartInstance = new Chart(ctxPie, {
                 type: 'doughnut',
                 data: {
-                    labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
+                    labels: ['左側翻身', '右側翻身', '平躺放鬆'],
                     datasets: [{
-                        data: [0, 0, 0],
-                        backgroundColor: ['#38bdf8', '#818cf8', '#334155'],
-                        borderWidth: 2,
-                        borderColor: '#0f172a'
+                        data: [35, 40, 25],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b'],
+                        borderWidth: 0,
+                        hoverOffset: 6
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '72%',
+                    cutout: '70%',
                     plugins: {
-                        legend: { display: false },
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#cbd5e1', font: { size: 11 }, padding: 12 }
+                        },
                         tooltip: {
-                            z: 9999, // 強制設定繪製順序於最上層
+                            enabled: true,
+                            backgroundColor: '#020617',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: true,
                             callbacks: {
                                 label: function (context) {
-                                    return ` ${context.label}: ${context.raw} 小時`;
+                                    return ` ${context.label}: ${context.raw}%`;
                                 }
                             }
                         }
                     }
-                }
+                },
+                plugins: [doughnutTextPlugin]
             });
-        }
 
-        // 初始化甘特圖 / 時間軸 (單一資料集，左右側合並在同一軸)
-        function initTimelineChart() {
-            const ctx = document.getElementById('timelineChart').getContext('2d');
-
-            timelineChartInstance = new Chart(ctx, {
+            // 2. 甘特圖 (Bar Chart with Cumulative Count in Tooltip)
+            const ctxGantt = document.getElementById('ganttChart').getContext('2d');
+            ganttChartInstance = new Chart(ctxGantt, {
                 type: 'bar',
                 data: {
-                    labels: [],
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
                     datasets: [
-                        {
-                            label: '翻身運作時段',
-                            data: [],
-                            backgroundColor: [], // 動態依據類型賦予顏色
-                            borderRadius: 4,
-                            barPercentage: 0.55
-                        }
+                        { label: '左側翻身', data: [2, 0, 3, 1, 4, 2], backgroundColor: '#10b981', borderRadius: 4 },
+                        { label: '右側翻身', data: [1, 3, 2, 4, 1, 3], backgroundColor: '#3b82f6', borderRadius: 4 },
+                        { label: '平躺放鬆', data: [5, 5, 3, 3, 3, 3], backgroundColor: '#f59e0b', borderRadius: 4 }
                     ]
                 },
                 options: {
-                    indexAxis: 'y', // 轉為橫向條形圖
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: {
-                        padding: { left: 0, right: 10, top: 0, bottom: 0 }
-                    },
                     scales: {
-                        x: {
-                            min: 0,
-                            max: 24,
-                            ticks: {
-                                color: '#94a3b8',
-                                stepSize: 4,
-                                font: { size: 10 },
-                                callback: function (value) {
-                                    return value.toString().padStart(2, '0') + 'h';
-                                }
-                            },
-                            grid: { color: '#334155' }
-                        },
-                        y: {
-                            ticks: {
-                                color: '#cbd5e1',
-                                font: { size: 10, weight: 'bold' },
-                                padding: 4
-                            },
-                            grid: {
-                                display: true,
-                                color: '#475569',
-                                lineWidth: 1.5,
-                                drawBorder: false
-                            }
-                        }
+                        x: { stacked: true, grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                        y: { stacked: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            backgroundColor: '#020617',
+                            borderColor: '#334155',
+                            borderWidth: 1,
                             callbacks: {
-                                label: function (ctx) {
-                                    const raw = ctx.raw;
-                                    if (raw && raw.intervals) {
-                                        let lines = raw.intervals.map(inv => ` ${inv.mode}: ${inv.timeStr}`);
-                                        if (raw.totalCount !== undefined) {
-                                            lines.push(` 累積執行次數: ${raw.totalCount} 次`);
-                                        }
-                                        return lines;
-                                    }
-                                    return '';
+                                label: function (context) {
+                                    return `${context.dataset.label}: ${context.raw} 小時 (累積執行 ${context.raw * 2} 次)`;
                                 }
                             }
                         }
@@ -764,419 +698,24 @@
             });
         }
 
-        // 從 Supabase 撈取真實歷程數據並更新圖表
-        async function loadUsageDataFromSupabase(range) {
-            if (!currentDeviceId) return;
+        function updateChartDataMock() {
+            if (!ganttChartInstance || !pieChartInstance) return;
 
-            const timelineCard = document.getElementById('timeline-card');
-            
-            // 計算嚴格的時間區間
-            const now = new Date();
-            let startDate = new Date();
-            let endDate = new Date(now);
+            // 亂數模擬切換裝置時的數據變化
+            const turns = Math.floor(Math.random() * 15 + 10);
+            const hours = (Math.random() * 4 + 12).toFixed(1);
+            const cycle = Math.floor(Math.random() * 20 + 40);
 
-            if (range === 'today') {
-                startDate.setHours(0, 0, 0, 0);
-                timelineCard.classList.remove('hidden');
-                document.getElementById('timeline-title').textContent = '今日翻身運作時間軸';
-            } else if (range === 'weekly') {
-                // 本週：當週日到週六
-                const dayOfWeek = now.getDay(); // 0 (週日) ~ 6 (週六)
-                startDate.setDate(now.getDate() - dayOfWeek);
-                startDate.setHours(0, 0, 0, 0);
+            document.getElementById("stat-turns").innerText = `${turns} 次`;
+            document.getElementById("stat-hours").innerText = `${hours} 小時`;
+            document.getElementById("stat-cycle").innerText = `${cycle} 分鐘`;
 
-                endDate.setDate(startDate.getDate() + 6);
-                endDate.setHours(23, 59, 59, 999);
-
-                timelineCard.classList.remove('hidden');
-                document.getElementById('timeline-title').textContent = '本週 (週日~週六) 翻身運作時段';
-            } else if (range === 'monthly') {
-                // 本月：1號到月底
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-                timelineCard.classList.add('hidden'); // 本月隱藏甘特圖
-            }
-
-            try {
-                const url = `${SUPABASE_BASE_URL}/v_device_session_durations?device_id=eq.${encodeURIComponent(currentDeviceId)}&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=mode,start_time,end_time,duration_seconds`;
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-
-                const rows = await response.json();
-                const dataRows = Array.isArray(rows) ? rows : [];
-
-                // 1. 圓餅圖統計
-                let stats = {
-                    left: { seconds: 0, count: 0 },
-                    right: { seconds: 0, count: 0 },
-                    idle: { seconds: 0, count: 0 }
-                };
-
-                dataRows.forEach(r => {
-                    const m = r.mode;
-                    const dur = Number(r.duration_seconds) || 0;
-                    if (stats[m]) {
-                        stats[m].seconds += dur;
-                        stats[m].count += 1;
-                    }
-                });
-
-                const leftHours = (stats.left.seconds / 3600).toFixed(1);
-                const rightHours = (stats.right.seconds / 3600).toFixed(1);
-                const idleHours = (stats.idle.seconds / 3600).toFixed(1);
-                const totalHours = ((stats.left.seconds + stats.right.seconds + stats.idle.seconds) / 3600).toFixed(1);
-
-                document.getElementById('stat-left-hours').innerHTML = `${leftHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
-                document.getElementById('stat-left-count').textContent = `執行 ${stats.left.count} 次`;
-
-                document.getElementById('stat-right-hours').innerHTML = `${rightHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
-                document.getElementById('stat-right-count').textContent = `執行 ${stats.right.count} 次`;
-
-                document.getElementById('chart-center-total').textContent = `${totalHours} h`;
-
-                if (usageChartInstance) {
-                    usageChartInstance.data.datasets[0].data = [Number(leftHours), Number(rightHours), Number(idleHours)];
-                    usageChartInstance.update();
-                }
-
-                renderCustomLegend([
-                    { label: '左側翻身協助', hours: leftHours, color: '#38bdf8' },
-                    { label: '右側翻身協助', hours: rightHours, color: '#818cf8' },
-                    { label: '平躺 / 待機', hours: idleHours, color: '#334155' }
-                ]);
-
-                // 2. 更新甘特圖 (Today / Weekly)
-                if (range !== 'monthly') {
-                    updateTimelineChartData(range, dataRows, startDate);
-                }
-
-            } catch (err) {
-                console.error('撈取歷程統計失敗', err);
-            }
-        }
-
-        // 處理甘特圖數據 (單一軸合併顯示左右側)
-        function updateTimelineChartData(range, dataRows, startDateRef) {
-            let labels = [];
-
-            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
-            const now = new Date();
-
-            if (range === 'today') {
-                labels.push([`今日`, `${now.getMonth() + 1}/${now.getDate()}`]);
-            } else if (range === 'weekly') {
-                // 本週：固定從週日到週六（共 7 天）
-                for (let i = 0; i < 7; i++) {
-                    const d = new Date(startDateRef);
-                    d.setDate(d.getDate() + i);
-                    labels.push([`週${dayNames[d.getDay()]}`, `${d.getMonth() + 1}/${d.getDate()}`]);
-                }
-            }
-
-            // 依據 labels 建立對應的空資料結構
-            let dayIntervalsMap = {};
-            labels.forEach((lbl, idx) => {
-                const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
-                dayIntervalsMap[key] = { index: idx, bars: [], count: 0 };
-            });
-
-            // 收集並歸類每筆事件
-            dataRows.forEach(r => {
-                if (!r.start_time || !r.end_time || r.mode === 'idle') return;
-
-                const start = new Date(r.start_time);
-                const end = new Date(r.end_time);
-
-                const targetDayStr = `週${dayNames[start.getDay()]}`;
-                const targetDateStr = `${start.getMonth() + 1}/${start.getDate()}`;
-                
-                let key = '';
-                if (range === 'today') {
-                    key = labels[0].join('-');
-                } else {
-                    key = `${targetDayStr}-${targetDateStr}`;
-                }
-
-                if (dayIntervalsMap[key]) {
-                    dayIntervalsMap[key].count += 1; // 累加次數
-                    const startDec = start.getHours() + start.getMinutes() / 60;
-                    const endDec = end.getHours() + end.getMinutes() / 60;
-                    const modeLabel = r.mode === 'left' ? '左側翻身' : '右側翻身';
-                    const timeStr = `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')} ~ ${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`;
-
-                    dayIntervalsMap[key].bars.push({
-                        x: [startDec, endDec],
-                        color: r.mode === 'left' ? '#38bdf8' : '#818cf8',
-                        mode: modeLabel,
-                        timeStr: timeStr
-                    });
-                }
-            });
-
-            if (timelineChartInstance) {
-                const wrapper = document.getElementById('timeline-canvas-wrapper');
-                if (range === 'today') {
-                    wrapper.style.height = '110px';
-                } else {
-                    wrapper.style.height = '260px';
-                }
-
-                timelineChartInstance.data.labels = labels;
-                
-                // 重新組合成 Chart.js 支援的 Floating Bar 陣列格式
-                let flattenedBars = [];
-                let flattenedColors = [];
-
-                labels.forEach(lbl => {
-                    const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
-                    const entry = dayIntervalsMap[key];
-                    if (entry && entry.bars.length > 0) {
-                        entry.bars.forEach(b => {
-                            flattenedBars.push({
-                                x: b.x,
-                                y: lbl,
-                                intervals: [b],
-                                totalCount: entry.count
-                            });
-                            flattenedColors.push(b.color);
-                        });
-                    }
-                });
-
-                timelineChartInstance.data.datasets[0].data = flattenedBars;
-                timelineChartInstance.data.datasets[0].backgroundColor = flattenedColors;
-                timelineChartInstance.update();
-            }
-        }
-
-        // 自訂圖例
-        function renderCustomLegend(items) {
-            const legendBox = document.getElementById('chart-legend-custom');
-            legendBox.innerHTML = '';
-            items.forEach(item => {
-                const el = document.createElement('div');
-                el.className = 'flex items-center gap-1.5';
-                el.innerHTML = `
-                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${item.color}"></span>
-                    <span>${item.label} (${item.hours}h)</span>
-                `;
-                legendBox.appendChild(el);
-            });
-        }
-
-        function log(msg, type = 'info') {
-            const logBox = document.getElementById('status-log');
-            const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
-            let colorClass = 'text-slate-300';
-            if (type === 'success') colorClass = 'text-emerald-400 font-bold';
-            if (type === 'error') colorClass = 'text-rose-400 font-bold';
-
-            const entry = document.createElement('div');
-            entry.className = colorClass;
-            entry.textContent = `[${time}] ${msg}`;
-            logBox.appendChild(entry);
-            logBox.scrollTop = logBox.scrollHeight;
-        }
-
-        function updateConnectionUI(target, status, text) {
-            const dot = document.getElementById(`${target}-dot`);
-            const label = document.getElementById(`${target}-status-text`);
-
-            dot.className = "w-2.5 h-2.5 rounded-full inline-block transition-colors";
-            if (status === 'connected') {
-                dot.classList.add('bg-emerald-400', 'shadow-lg', 'shadow-emerald-500/50');
-                label.className = "text-xs font-bold text-emerald-400";
-            } else if (status === 'connecting') {
-                dot.classList.add('bg-amber-400', 'animate-pulse');
-                label.className = "text-xs font-bold text-amber-400";
-            } else if (status === 'error') {
-                dot.classList.add('bg-rose-500');
-                label.className = "text-xs font-bold text-rose-400";
-            } else {
-                dot.classList.add('bg-slate-500');
-                label.className = "text-xs font-bold text-slate-300";
-            }
-            label.textContent = text;
-        }
-
-        // Supabase 動態心跳查詢
-        async function checkDeviceStatus() {
-            if (!currentDeviceId) {
-                updateConnectionUI('wifi', 'error', '未選取裝置');
-                return;
-            }
-
-            try {
-                const url = `${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(currentDeviceId)}`;
-                const response = await fetch(url, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-                const rows = await response.json();
-
-                if (rows && rows.length > 0) {
-                    const device = rows[0];
-                    const dbStatus = device.status;
-                    const updatedAt = device.updated_at;
-
-                    if (device.bed_label) {
-                        document.getElementById('current-device-location').textContent = device.bed_label;
-                    }
-
-                    if (updatedAt) {
-                        let isoTimeString = updatedAt;
-                        if (!isoTimeString.endsWith('Z') && !isoTimeString.includes('+') && !isoTimeString.includes('-', 10)) {
-                            isoTimeString += 'Z';
-                        }
-
-                        if (dbStatus === 'online') {
-                            const lastBeatTime = new Date(isoTimeString).getTime();
-                            const now = new Date().getTime();
-                            const diffSeconds = (now - lastBeatTime) / 1000;
-
-                            if (diffSeconds > 40) {
-                                updateConnectionUI('wifi', 'error', '裝置離線(逾時)');
-                            } else {
-                                updateConnectionUI('wifi', 'connected', '裝置線上');
-                            }
-                        } else {
-                            updateConnectionUI('wifi', 'error', '裝置離線');
-                        }
-                    } else {
-                        updateConnectionUI('wifi', 'error', '無裝置資料');
-                    }
-                } else {
-                    updateConnectionUI('wifi', 'error', '無裝置資料');
-                }
-            } catch (err) {
-                console.error('狀態查詢失敗', err);
-            }
-        }
-
-        function togglePassVisibility() {
-            const passInput = document.getElementById('wifi-pass');
-            const btn = document.getElementById('toggle-pass-btn');
-            if (passInput.type === 'password') {
-                passInput.type = 'text';
-                btn.textContent = '隱藏';
-            } else {
-                passInput.type = 'password';
-                btn.textContent = '顯示';
-            }
-        }
-
-        function loadCachedCredentials() {
-            const savedSsid = localStorage.getItem('ble_wifi_ssid');
-            const savedPass = localStorage.getItem('ble_wifi_pass');
-            if (savedSsid) document.getElementById('wifi-ssid').value = savedSsid;
-            if (savedPass) document.getElementById('wifi-pass').value = savedPass;
-        }
-
-        function clearCachedCredentials() {
-            localStorage.removeItem('ble_wifi_ssid');
-            localStorage.removeItem('ble_wifi_pass');
-            document.getElementById('wifi-ssid').value = '';
-            document.getElementById('wifi-pass').value = '';
-            log('已清除本地快取資訊。');
-        }
-
-        // Web BLE 配網流程
-        async function startBLEProvisioning() {
-            const ssid = document.getElementById('wifi-ssid').value.trim();
-            const pass = document.getElementById('wifi-pass').value.trim();
-
-            if (!ssid) {
-                log('請先輸入 Wi-Fi 名稱 (SSID)', 'error');
-                return;
-            }
-
-            localStorage.setItem('ble_wifi_ssid', ssid);
-            localStorage.setItem('ble_wifi_pass', pass);
-
-            if (!navigator.bluetooth) {
-                log('目前瀏覽器不支援 Web Bluetooth API。', 'error');
-                return;
-            }
-
-            try {
-                updateConnectionUI('ble', 'connecting', '掃描藍牙中...');
-                log(`正在掃描東庚翻身床裝置 (DK_AirBed_)...`);
-
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'DK_AirBed_' }],
-                    optionalServices: [SERVICE_UUID]
-                });
-
-                const discoveredDeviceId = device.name;
-                log(`已配對裝置：${discoveredDeviceId}，正在建立 GATT 連線...`);
-                updateConnectionUI('ble', 'connecting', '連線中...');
-
-                const server = await device.gatt.connect();
-                updateConnectionUI('ble', 'connected', '藍牙已連線');
-
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                const characteristic = await service.getCharacteristic(CHAR_RX_UUID);
-                const encoder = new TextEncoder();
-
-                log(`正在寫入 SSID: ${ssid}`);
-                await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ ssid: ssid })));
-
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                log(`正在寫入 Password...`);
-                await characteristic.writeValueWithoutResponse(encoder.encode(JSON.stringify({ pw: pass })));
-
-                log('✅ 憑證傳送成功！Wi-Fi 資訊已寫入裝置。', 'success');
-
-                device.gatt.disconnect();
-                updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
-
-                log(`正在將真實裝置 ${discoveredDeviceId} 綁定至帳號 ${currentAccountId}...`);
-                await registerDeviceToUser(currentAccountId, discoveredDeviceId);
-
-            } catch (err) {
-                updateConnectionUI('ble', 'error', '連線失敗');
-                log(`錯誤: ${err.message}`, 'error');
-            }
-        }
-
-        // 向 Supabase 寫入真實的 user_devices 關聯
-        async function registerDeviceToUser(accountId, deviceId) {
-            try {
-                const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
-                    method: 'POST',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'resolution=merge-duplicates'
-                    },
-                    body: JSON.stringify({
-                        user_account: accountId,
-                        device_id: deviceId
-                    })
-                });
-
-                if (response.ok || response.status === 201 || response.status === 204) {
-                    log(`✅ 裝置 ${deviceId} 成功綁定至您的帳號！`, 'success');
-                    selectDevice(deviceId, deviceId);
-                    await fetchUserDevicesFromSupabase();
-                    switchTab('devices');
-                } else {
-                    const errJson = await response.json();
-                    log(`⚠️ 綁定寫入警告: ${errJson.message || '未知錯誤'}`, 'error');
-                }
-            } catch (err) {
-                log(`❌ 寫入資料庫失敗: ${err.message}`, 'error');
-            }
+            pieChartInstance.data.datasets[0].data = [
+                Math.floor(Math.random() * 20 + 25),
+                Math.floor(Math.random() * 20 + 25),
+                Math.floor(Math.random() * 20 + 15)
+            ];
+            pieChartInstance.update();
         }
     </script>
 </body>
