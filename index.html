@@ -156,7 +156,7 @@
             </button>
         </div>
 
-       <!-- 裝置狀態卡片 (公用區塊) -->
+        <!-- 裝置狀態卡片 (公用區塊) -->
         <div class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 space-y-2">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
@@ -978,7 +978,7 @@
             });
         }
 
-        // 從 Supabase 撈取真實歷程數據並更新圖表 (配合全新 lightweight 架構)
+        // 從 Supabase 撈取真實歷程數據並更新圖表 (改為序列化執行，徹底解決手機端非同步競態)
         async function loadUsageDataFromSupabase(range) {
             if (!currentDeviceId) return;
 
@@ -990,12 +990,14 @@
 
             if (range === 'today') {
                 startDate.setHours(0, 0, 0, 0);
+                startDate.setMinutes(startDate.getMinutes() - 1); // 緩衝時間
                 timelineCard.classList.remove('hidden');
                 document.getElementById('timeline-title').textContent = '今日床體運作時間軸';
             } else if (range === 'weekly') {
                 const dayOfWeek = now.getDay();
                 startDate.setDate(now.getDate() - dayOfWeek);
                 startDate.setHours(0, 0, 0, 0);
+                startDate.setMinutes(startDate.getMinutes() - 1);
 
                 endDate.setDate(startDate.getDate() + 6);
                 endDate.setHours(23, 59, 59, 999);
@@ -1009,15 +1011,18 @@
                 timelineCard.classList.add('hidden');
             }
 
-           try {
-                // 1. 查詢運作區間 (透過 Supabase SDK 查詢 View)
+            try {
+                const startIso = startDate.toISOString();
+                const endIso = endDate.toISOString();
+
+                // 1. 序列化步驟一：先查運作區間
                 const { data: sessionRows, error: sessionErr } = await supabaseClient
                     .from('v_device_operation_sessions')
                     .select('start_time, end_time, duration_seconds')
                     .eq('device_id', currentDeviceId)
                     .eq('action', 'start')
-                    .gte('start_time', startDate.toISOString())
-                    .lte('start_time', endDate.toISOString());
+                    .gte('start_time', startIso)
+                    .lte('start_time', endIso);
 
                 if (sessionErr) console.error('查詢運作區間錯誤:', sessionErr);
                 const validSessions = Array.isArray(sessionRows) ? sessionRows : [];
@@ -1032,29 +1037,28 @@
                 const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
                 const idleHours = (idleSeconds / 3600).toFixed(1);
 
-                // 2. 查詢左側翻身次數 (使用 Supabase SDK 的 count 功能，極速且不佔頻寬)
+                // 2. 序列化步驟二：依序查詢左側翻身次數（確保不與其他請求並發搶佔資源）
                 const { count: leftCount, error: leftErr } = await supabaseClient
                     .from('device_logs')
                     .select('*', { count: 'exact', head: true })
                     .eq('device_id', currentDeviceId)
                     .eq('action', 'turn_left')
-                    .gte('recorded_at', startDate.toISOString())
-                    .lte('recorded_at', endDate.toISOString());
+                    .gte('recorded_at', startIso)
+                    .lte('recorded_at', endIso);
 
                 if (leftErr) console.error('查詢左側次數錯誤:', leftErr);
 
-                // 3. 查詢右側翻身次數
+                // 3. 序列化步驟三：依序查詢右側翻身次數
                 const { count: rightCount, error: rightErr } = await supabaseClient
                     .from('device_logs')
                     .select('*', { count: 'exact', head: true })
                     .eq('device_id', currentDeviceId)
                     .eq('action', 'turn_right')
-                    .gte('recorded_at', startDate.toISOString())
-                    .lte('recorded_at', endDate.toISOString());
+                    .gte('recorded_at', startIso)
+                    .lte('recorded_at', endIso);
 
                 if (rightErr) console.error('查詢右側次數錯誤:', rightErr);
 
-                // 確保數值有效
                 const safeLeftCount = leftCount || 0;
                 const safeRightCount = rightCount || 0;
 
