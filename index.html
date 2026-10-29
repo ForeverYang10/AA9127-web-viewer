@@ -1010,63 +1010,57 @@
             }
 
            try {
-                // 1. 查詢運作區間 (不使用不合法的 &_t 參數，改用 fetch 的 cache 控制)
-                const sessionUrl = `${SUPABASE_BASE_URL}/v_device_operation_sessions?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.start&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=start_time,end_time,duration_seconds`;
+                // 1. 查詢運作區間 (透過 Supabase SDK 查詢 View)
+                const { data: sessionRows, error: sessionErr } = await supabaseClient
+                    .from('v_device_operation_sessions')
+                    .select('start_time, end_time, duration_seconds')
+                    .eq('device_id', currentDeviceId)
+                    .eq('action', 'start')
+                    .gte('start_time', startDate.toISOString())
+                    .lte('start_time', endDate.toISOString());
 
-                const sessionRes = await fetch(sessionUrl, {
-                    cache: 'no-store', // 強制瀏覽器不使用快取
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Cache-Control': 'no-cache, no-store, must-reload'
-                    }
-                });
-
-                const sessionRows = await sessionRes.json();
+                if (sessionErr) console.error('查詢運作區間錯誤:', sessionErr);
                 const validSessions = Array.isArray(sessionRows) ? sessionRows : [];
 
-                // 計算總運作秒數
                 let activeSeconds = 0;
                 validSessions.forEach(s => {
                     activeSeconds += Number(s.duration_seconds) || 0;
                 });
 
                 const activeHours = (activeSeconds / 3600).toFixed(1);
-
-                // 計算當前時間範圍的總時間以求得待機時間
                 const totalRangeSeconds = (endDate.getTime() - startDate.getTime()) / 1000;
                 const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
                 const idleHours = (idleSeconds / 3600).toFixed(1);
 
-                // 2. 獨立查詢左側翻身次數 (turn_left)
-                const leftUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_left&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id`;
-                const leftRes = await fetch(leftUrl, {
-                    cache: 'no-store',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Cache-Control': 'no-cache, no-store, must-reload'
-                    }
-                });
-                const leftRows = await leftRes.json();
-                const leftCount = Array.isArray(leftRows) ? leftRows.length : 0;
+                // 2. 查詢左側翻身次數 (使用 Supabase SDK 的 count 功能，極速且不佔頻寬)
+                const { count: leftCount, error: leftErr } = await supabaseClient
+                    .from('device_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('device_id', currentDeviceId)
+                    .eq('action', 'turn_left')
+                    .gte('recorded_at', startDate.toISOString())
+                    .lte('recorded_at', endDate.toISOString());
 
-                // 3. 獨立查詢右側翻身次數 (turn_right)
-                const rightUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_right&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id`;
-                const rightRes = await fetch(rightUrl, {
-                    cache: 'no-store',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Cache-Control': 'no-cache, no-store, must-reload'
-                    }
-                });
-                const rightRows = await rightRes.json();
-                const rightCount = Array.isArray(rightRows) ? rightRows.length : 0;
+                if (leftErr) console.error('查詢左側次數錯誤:', leftErr);
+
+                // 3. 查詢右側翻身次數
+                const { count: rightCount, error: rightErr } = await supabaseClient
+                    .from('device_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('device_id', currentDeviceId)
+                    .eq('action', 'turn_right')
+                    .gte('recorded_at', startDate.toISOString())
+                    .lte('recorded_at', endDate.toISOString());
+
+                if (rightErr) console.error('查詢右側次數錯誤:', rightErr);
+
+                // 確保數值有效
+                const safeLeftCount = leftCount || 0;
+                const safeRightCount = rightCount || 0;
 
                 // 4. 更新 UI 數字
-                document.getElementById('stat-left-count').innerHTML = `${leftCount} <span class="text-xs font-normal text-slate-400">次</span>`;
-                document.getElementById('stat-right-count').innerHTML = `${rightCount} <span class="text-xs font-normal text-slate-400">次</span>`;
+                document.getElementById('stat-left-count').innerHTML = `${safeLeftCount} <span class="text-xs font-normal text-slate-400">次</span>`;
+                document.getElementById('stat-right-count').innerHTML = `${safeRightCount} <span class="text-xs font-normal text-slate-400">次</span>`;
                 document.getElementById('chart-center-total').textContent = `${activeHours} h`;
 
                 // 5. 更新環形圖
