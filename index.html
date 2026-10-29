@@ -1009,14 +1009,15 @@
                 timelineCard.classList.add('hidden');
             }
 
-            try {
-                // 1. 查詢運作區間 (v_device_operation_sessions，僅過濾 action = 'start')
-                const sessionUrl = `${SUPABASE_BASE_URL}/v_device_operation_sessions?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.start&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=start_time,end_time,duration_seconds`;
+           try {
+                // 1. 查詢運作區間 (加上防快取時間戳記 &_t)
+                const sessionUrl = `${SUPABASE_BASE_URL}/v_device_operation_sessions?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.start&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=start_time,end_time,duration_seconds&_t=${new Date().getTime()}`;
 
                 const sessionRes = await fetch(sessionUrl, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Cache-Control': 'no-cache'
                     }
                 });
 
@@ -1036,23 +1037,25 @@
                 const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
                 const idleHours = (idleSeconds / 3600).toFixed(1);
 
-                // 2. 獨立查詢左側翻身次數 (turn_left)
-                const leftUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_left&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id`;
+                // 2. 獨立查詢左側翻身次數 (turn_left) - 加上防快取時間戳記 &_t
+                const leftUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_left&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id&_t=${new Date().getTime()}`;
                 const leftRes = await fetch(leftUrl, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Cache-Control': 'no-cache'
                     }
                 });
                 const leftRows = await leftRes.json();
                 const leftCount = Array.isArray(leftRows) ? leftRows.length : 0;
 
-                // 3. 獨立查詢右側翻身次數 (turn_right)
-                const rightUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_right&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id`;
+                // 3. 獨立查詢右側翻身次數 (turn_right) - 加上防快取時間戳記 &_t
+                const rightUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_right&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id&_t=${new Date().getTime()}`;
                 const rightRes = await fetch(rightUrl, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Cache-Control': 'no-cache'
                     }
                 });
                 const rightRows = await rightRes.json();
