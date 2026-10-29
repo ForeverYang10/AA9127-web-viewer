@@ -188,11 +188,11 @@
                 </div>
             </div>
 
-            <!-- 1. 翻身時段甘特圖卡片 (移至最上方，僅在 今日、本週 顯示，本月隱藏) -->
+            <!-- 1. 翻身時段甘特圖卡片 -->
             <div id="timeline-card"
                 class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-2">
                 <div class="w-full flex justify-between items-center text-xs text-slate-400 px-1">
-                    <span id="timeline-title" class="font-bold text-slate-200">翻身運作時間軸</span>
+                    <span id="timeline-title" class="font-bold text-slate-200">床體運作時間軸</span>
                     <span class="text-[10px] text-slate-500">當日時刻 (00~24h)</span>
                 </div>
 
@@ -203,36 +203,30 @@
 
                 <div class="flex justify-center gap-4 text-xs text-slate-300 pt-1">
                     <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded bg-sky-400 inline-block"></span>
-                        <span>左側翻身</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded bg-indigo-400 inline-block"></span>
-                        <span>右側翻身</span>
+                        <span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span>
+                        <span>床體運作時段</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. 關鍵統計數據與圓餅圖整合卡片 (包含上方關鍵統計 + 下方圓餅圖) -->
+            <!-- 2. 關鍵統計數據與圓餅圖整合卡片 -->
             <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/60 space-y-4">
                 <!-- 上半部：關鍵統計數據區塊 -->
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-slate-800/60 p-3.5 rounded-xl border border-sky-500/30 text-center space-y-1">
                         <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
-                            <span>👈 左側翻身協助</span>
+                            <span>👈 左側翻身計數</span>
                         </div>
-                        <div id="stat-left-hours" class="text-lg sm:text-xl font-extrabold text-sky-300">0.0 <span
-                                class="text-xs font-normal text-slate-400">小時</span></div>
-                        <div id="stat-left-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
+                        <div id="stat-left-count" class="text-lg sm:text-2xl font-extrabold text-sky-300">0 <span
+                                class="text-xs font-normal text-slate-400">次</span></div>
                     </div>
 
                     <div class="bg-slate-800/60 p-3.5 rounded-xl border border-indigo-500/30 text-center space-y-1">
                         <div class="text-xs text-indigo-400 font-semibold flex items-center justify-center gap-1">
-                            <span>👉 右側翻身協助</span>
+                            <span>👉 右側翻身計數</span>
                         </div>
-                        <div id="stat-right-hours" class="text-lg sm:text-xl font-extrabold text-indigo-300">0.0 <span
-                                class="text-xs font-normal text-slate-400">小時</span></div>
-                        <div id="stat-right-count" class="text-xs text-slate-400 font-medium">執行 0 次</div>
+                        <div id="stat-right-count" class="text-lg sm:text-2xl font-extrabold text-indigo-300">0 <span
+                                class="text-xs font-normal text-slate-400">次</span></div>
                     </div>
                 </div>
 
@@ -242,7 +236,7 @@
                 <!-- 下半部：圓餅圖區塊 -->
                 <div class="flex flex-col items-center space-y-3">
                     <div class="w-full flex justify-between items-center text-xs text-slate-400">
-                        <span id="chart-title" class="font-bold text-slate-200">翻身模式時間佔比</span>
+                        <span id="chart-title" class="font-bold text-slate-200">床體運作狀態時間佔比</span>
                         <span id="chart-unit" class="text-[11px] text-slate-500">單位：小時</span>
                     </div>
 
@@ -250,9 +244,9 @@
                     <div class="relative w-44 h-44 sm:w-52 sm:h-52 my-1 overflow-visible">
                         <!-- 圖表 Canvas -->
                         <canvas id="usageChart" class="relative z-10 cursor-pointer"></canvas>
-                        <!-- 中央總時數文字 (不阻擋事件，圖層位於 Canvas 下方) -->
+                        <!-- 中央總時數文字 -->
                         <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
-                            <span class="text-[10px] text-slate-400">協助運作總時數</span>
+                            <span class="text-[10px] text-slate-400">總運作時間</span>
                             <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0
                                 h</span>
                         </div>
@@ -471,7 +465,6 @@
                         console.log('偵測到裝置狀態變更:', payload);
                         checkDeviceStatus();
 
-                        // 局部更新對應裝置卡片的狀態，避免畫面重新整理閃爍
                         const updatedDevice = payload.new;
                         if (updatedDevice && updatedDevice.device_id) {
                             const targetDev = userDevicesList.find(d => d.id === updatedDevice.device_id);
@@ -526,7 +519,7 @@
             }
         }
 
-        // 確保使用者代碼寫入資料庫 (回傳是否為新使用者)
+        // 確保使用者代碼寫入資料庫
         async function ensureUserRegisteredInSupabase(accountId) {
             try {
                 const checkUrl = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(accountId)}`;
@@ -553,9 +546,9 @@
                             device_id: 'UNBOUND'
                         })
                     });
-                    return true; // 新增使用者
+                    return true;
                 }
-                return false; // 既有使用者
+                return false;
             } catch (err) {
                 console.error('寫入例外錯誤:', err);
                 return false;
@@ -570,7 +563,7 @@
             document.getElementById('login-overlay').classList.remove('hidden');
         }
 
-        // 免原生 confirm 的二次點擊刪除帳戶機制
+        // 二次點擊刪除帳戶機制
         async function deleteCurrentAccount() {
             if (!currentAccountId) return;
             const btn = document.getElementById('btn-delete-account');
@@ -614,7 +607,7 @@
             }
         }
 
-        // 免原生 confirm 的二次點擊解除單一裝置綁定
+        // 二次點擊解除單一裝置綁定
         async function removeDeviceBinding(deviceId, event, btnElement) {
             if (event) event.stopPropagation();
 
@@ -733,7 +726,7 @@
             }
         }
 
-        // 背景定期巡檢：檢查是否有裝置超過 40 秒未上報心跳，若是則本地改為 offline 並同步寫回資料庫
+        // 背景定期巡檢：檢查是否有裝置超時未回應
         async function checkAndSyncTimeouts() {
             let hasChanged = false;
             for (const dev of userDevicesList) {
@@ -742,7 +735,6 @@
                     if (!online) {
                         dev.status = 'offline';
                         hasChanged = true;
-                        // 同步寫回 Supabase 資料庫，讓其他前端也能 Realtime 收到離線狀態
                         try {
                             await fetch(`${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(dev.id)}`, {
                                 method: 'PATCH',
@@ -866,17 +858,17 @@
             loadUsageDataFromSupabase(range);
         }
 
-        // 初始化圓餅圖
+        // 初始化圓餅圖 (運作中 vs 待機中)
         function initChart() {
             const ctx = document.getElementById('usageChart').getContext('2d');
 
             usageChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['左側翻身協助', '右側翻身協助', '平躺 / 待機'],
+                    labels: ['床體運作中', '待機 / 平躺'],
                     datasets: [{
-                        data: [0, 0, 0],
-                        backgroundColor: ['#38bdf8', '#818cf8', '#334155'],
+                        data: [0, 0],
+                        backgroundColor: ['#10b981', '#334155'],
                         borderWidth: 2,
                         borderColor: '#0f172a'
                     }]
@@ -908,7 +900,7 @@
             });
         }
 
-        // 初始化甘特圖 / 時間軸
+        // 初始化甘特圖 / 時間軸 (統一運作顏色)
         function initTimelineChart() {
             const ctx = document.getElementById('timelineChart').getContext('2d');
 
@@ -918,9 +910,9 @@
                     labels: [],
                     datasets: [
                         {
-                            label: '翻身運作時段',
+                            label: '床體運作時段',
                             data: [],
-                            backgroundColor: [],
+                            backgroundColor: '#10b981',
                             borderRadius: 4,
                             barPercentage: 0.55
                         }
@@ -971,9 +963,9 @@
                                 label: function (ctx) {
                                     const raw = ctx.raw;
                                     if (raw && raw.intervals) {
-                                        let lines = raw.intervals.map(inv => ` ${inv.mode}: ${inv.timeStr}`);
+                                        let lines = raw.intervals.map(inv => ` 運作時段: ${inv.timeStr}`);
                                         if (raw.totalCount !== undefined) {
-                                            lines.push(` 累積執行次數: ${raw.totalCount} 次`);
+                                            lines.push(` 累積運作區間: ${raw.totalCount} 次`);
                                         }
                                         return lines;
                                     }
@@ -986,7 +978,7 @@
             });
         }
 
-        // 從 Supabase 撈取真實歷程數據並更新圖表
+        // 從 Supabase 撈取真實歷程數據並更新圖表 (配合全新 lightweight 架構)
         async function loadUsageDataFromSupabase(range) {
             if (!currentDeviceId) return;
 
@@ -999,7 +991,7 @@
             if (range === 'today') {
                 startDate.setHours(0, 0, 0, 0);
                 timelineCard.classList.remove('hidden');
-                document.getElementById('timeline-title').textContent = '今日翻身運作時間軸';
+                document.getElementById('timeline-title').textContent = '今日床體運作時間軸';
             } else if (range === 'weekly') {
                 const dayOfWeek = now.getDay();
                 startDate.setDate(now.getDate() - dayOfWeek);
@@ -1009,7 +1001,7 @@
                 endDate.setHours(23, 59, 59, 999);
 
                 timelineCard.classList.remove('hidden');
-                document.getElementById('timeline-title').textContent = '本週 (週日~週六) 翻身運作時段';
+                document.getElementById('timeline-title').textContent = '本週 (週日~週六) 床體運作時段';
             } else if (range === 'monthly') {
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -1018,59 +1010,73 @@
             }
 
             try {
-                const url = `${SUPABASE_BASE_URL}/v_device_session_durations?device_id=eq.${encodeURIComponent(currentDeviceId)}&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=mode,start_time,end_time,duration_seconds`;
+                // 1. 查詢運作區間 (v_device_operation_sessions，僅過濾 action = 'start')
+                const sessionUrl = `${SUPABASE_BASE_URL}/v_device_operation_sessions?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.start&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=start_time,end_time,duration_seconds`;
 
-                const response = await fetch(url, {
+                const sessionRes = await fetch(sessionUrl, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
 
-                const rows = await response.json();
-                const dataRows = Array.isArray(rows) ? rows : [];
+                const sessionRows = await sessionRes.json();
+                const validSessions = Array.isArray(sessionRows) ? sessionRows : [];
 
-                let stats = {
-                    left: { seconds: 0, count: 0 },
-                    right: { seconds: 0, count: 0 },
-                    idle: { seconds: 0, count: 0 }
-                };
-
-                dataRows.forEach(r => {
-                    const m = r.mode;
-                    const dur = Number(r.duration_seconds) || 0;
-                    if (stats[m]) {
-                        stats[m].seconds += dur;
-                        stats[m].count += 1;
-                    }
+                // 計算總運作秒數
+                let activeSeconds = 0;
+                validSessions.forEach(s => {
+                    activeSeconds += Number(s.duration_seconds) || 0;
                 });
 
-                const leftHours = (stats.left.seconds / 3600).toFixed(1);
-                const rightHours = (stats.right.seconds / 3600).toFixed(1);
-                const idleHours = (stats.idle.seconds / 3600).toFixed(1);
-                const totalHours = ((stats.left.seconds + stats.right.seconds + stats.idle.seconds) / 3600).toFixed(1);
+                const activeHours = (activeSeconds / 3600).toFixed(1);
 
-                document.getElementById('stat-left-hours').innerHTML = `${leftHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
-                document.getElementById('stat-left-count').textContent = `執行 ${stats.left.count} 次`;
+                // 計算當前時間範圍的總時間以求得待機時間
+                const totalRangeSeconds = (endDate.getTime() - startDate.getTime()) / 1000;
+                const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
+                const idleHours = (idleSeconds / 3600).toFixed(1);
 
-                document.getElementById('stat-right-hours').innerHTML = `${rightHours} <span class="text-xs font-normal text-slate-400">小時</span>`;
-                document.getElementById('stat-right-count').textContent = `執行 ${stats.right.count} 次`;
+                // 2. 獨立查詢左側翻身次數 (turn_left)
+                const leftUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_left&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id`;
+                const leftRes = await fetch(leftUrl, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                const leftRows = await leftRes.json();
+                const leftCount = Array.isArray(leftRows) ? leftRows.length : 0;
 
-                document.getElementById('chart-center-total').textContent = `${totalHours} h`;
+                // 3. 獨立查詢右側翻身次數 (turn_right)
+                const rightUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_right&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id`;
+                const rightRes = await fetch(rightUrl, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                const rightRows = await rightRes.json();
+                const rightCount = Array.isArray(rightRows) ? rightRows.length : 0;
 
+                // 4. 更新 UI 數字
+                document.getElementById('stat-left-count').innerHTML = `${leftCount} <span class="text-xs font-normal text-slate-400">次</span>`;
+                document.getElementById('stat-right-count').innerHTML = `${rightCount} <span class="text-xs font-normal text-slate-400">次</span>`;
+                document.getElementById('chart-center-total').textContent = `${activeHours} h`;
+
+                // 5. 更新環形圖
                 if (usageChartInstance) {
-                    usageChartInstance.data.datasets[0].data = [Number(leftHours), Number(rightHours), Number(idleHours)];
+                    usageChartInstance.data.datasets[0].data = [Number(activeHours), Number(idleHours)];
                     usageChartInstance.update();
                 }
 
                 renderCustomLegend([
-                    { label: '左側翻身協助', hours: leftHours, color: '#38bdf8' },
-                    { label: '右側翻身協助', hours: rightHours, color: '#818cf8' },
-                    { label: '平躺 / 待機', hours: idleHours, color: '#334155' }
+                    { label: '床體運作中', hours: activeHours, color: '#10b981' },
+                    { label: '待機 / 平躺', hours: idleHours, color: '#334155' }
                 ]);
 
+                // 6. 更新甘特圖
                 if (range !== 'monthly') {
-                    updateTimelineChartData(range, dataRows, startDate);
+                    updateTimelineChartData(range, validSessions, startDate);
                 }
 
             } catch (err) {
@@ -1078,7 +1084,7 @@
             }
         }
 
-        // 處理甘特圖數據
+        // 處理甘特圖數據 (配合 start/stop session 結構)
         function updateTimelineChartData(range, dataRows, startDateRef) {
             let labels = [];
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
@@ -1101,7 +1107,7 @@
             });
 
             dataRows.forEach(r => {
-                if (!r.start_time || !r.end_time || r.mode === 'idle') return;
+                if (!r.start_time || !r.end_time) return;
 
                 const start = new Date(r.start_time);
                 const end = new Date(r.end_time);
@@ -1120,13 +1126,11 @@
                     dayIntervalsMap[key].count += 1;
                     const startDec = start.getHours() + start.getMinutes() / 60;
                     const endDec = end.getHours() + end.getMinutes() / 60;
-                    const modeLabel = r.mode === 'left' ? '左側翻身' : '右側翻身';
                     const timeStr = `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')} ~ ${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`;
 
                     dayIntervalsMap[key].bars.push({
                         x: [startDec, endDec],
-                        color: r.mode === 'left' ? '#38bdf8' : '#818cf8',
-                        mode: modeLabel,
+                        color: '#10b981',
                         timeStr: timeStr
                     });
                 }
