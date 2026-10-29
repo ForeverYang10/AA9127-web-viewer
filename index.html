@@ -38,6 +38,7 @@
                 transform: translateY(-100%);
                 opacity: 0;
             }
+
             to {
                 transform: translateY(0);
                 opacity: 1;
@@ -49,6 +50,7 @@
                 transform: translateY(0);
                 opacity: 1;
             }
+
             to {
                 transform: translateY(-100%);
                 opacity: 0;
@@ -68,7 +70,9 @@
 <body class="min-h-screen flex flex-col items-center justify-start p-3 sm:p-4 md:p-6 relative">
 
     <!-- 自訂 Toast 提示容器 (固定頂部，無網址標題) -->
-    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center space-y-2 pointer-events-none w-11/12 max-w-sm"></div>
+    <div id="toast-container"
+        class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center space-y-2 pointer-events-none w-11/12 max-w-sm">
+    </div>
 
     <!-- 1. 帳號登入蓋層 (Overlay Login Portal) -->
     <div id="login-overlay"
@@ -188,7 +192,8 @@
             </div>
 
             <!-- 1. 翻身時段甘特圖卡片 (移至最上方，僅在 今日、本週 顯示，本月隱藏) -->
-            <div id="timeline-card" class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-2">
+            <div id="timeline-card"
+                class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-2">
                 <div class="w-full flex justify-between items-center text-xs text-slate-400 px-1">
                     <span id="timeline-title" class="font-bold text-slate-200">翻身運作時間軸</span>
                     <span class="text-[10px] text-slate-500">當日時刻 (00~24h)</span>
@@ -256,7 +261,8 @@
                         </div>
                     </div>
 
-                    <div id="chart-legend-custom" class="flex flex-wrap justify-center gap-3 text-xs text-slate-300 pt-1">
+                    <div id="chart-legend-custom"
+                        class="flex flex-wrap justify-center gap-3 text-xs text-slate-300 pt-1">
                         <!-- 由 JS 動態生成 Legend -->
                     </div>
                 </div>
@@ -422,7 +428,7 @@
             loadCachedCredentials();
             initChart();
             initTimelineChart();
-            
+
             // 啟動 Supabase Realtime 即時訂閱
             initRealtimeSubscription();
 
@@ -451,6 +457,10 @@
                     (payload) => {
                         console.log('偵測到裝置狀態變更:', payload);
                         checkDeviceStatus();
+                        // 🌟 當狀態表有任何異動時，同步更新裝置清單頁籤的狀態顯示
+                        if (currentAccountId) {
+                            fetchUserDevicesFromSupabase();
+                        }
                     }
                 )
                 .subscribe((status) => {
@@ -920,7 +930,7 @@
             if (!currentDeviceId) return;
 
             const timelineCard = document.getElementById('timeline-card');
-            
+
             const now = new Date();
             let startDate = new Date();
             let endDate = new Date(now);
@@ -948,7 +958,7 @@
 
             try {
                 const url = `${SUPABASE_BASE_URL}/v_device_session_durations?device_id=eq.${encodeURIComponent(currentDeviceId)}&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=mode,start_time,end_time,duration_seconds`;
-                
+
                 const response = await fetch(url, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -1037,7 +1047,7 @@
 
                 const targetDayStr = `週${dayNames[start.getDay()]}`;
                 const targetDateStr = `${start.getMonth() + 1}/${start.getDate()}`;
-                
+
                 let key = '';
                 if (range === 'today') {
                     key = labels[0].join('-');
@@ -1070,7 +1080,7 @@
                 }
 
                 timelineChartInstance.data.labels = labels;
-                
+
                 let flattenedBars = [];
                 let flattenedColors = [];
 
