@@ -390,12 +390,10 @@
             return id.length > maxLength ? id.substring(0, maxLength) + "..." : id;
         }
 
-        // --- 1. 40 秒心跳超時判斷輔助函式 ---
-        function isDeviceOnline(statusObj) {
-            if (!statusObj || statusObj.status !== 'online' || !statusObj.updated_at) {
-                return false;
-            }
-            let isoTimeString = statusObj.updated_at;
+        // --- 判定裝置是否線上 (40 秒心跳逾時檢測) ---
+        function isDeviceOnline(updatedAt, status) {
+            if (status !== 'online' || !updatedAt) return false;
+            let isoTimeString = updatedAt;
             if (!isoTimeString.endsWith('Z') && !isoTimeString.includes('+') && !isoTimeString.includes('-', 10)) {
                 isoTimeString += 'Z';
             }
@@ -447,11 +445,14 @@
             // 啟動 Supabase Realtime 即時訂閱
             initRealtimeSubscription();
 
-            // 定期更新雲端心跳狀態 (每 10 秒)
-            statusInterval = setInterval(checkDeviceStatus, 10000);
+            // 定期更新雲端心跳狀態與前端離線巡檢 (每 10 秒)
+            statusInterval = setInterval(() => {
+                checkDeviceStatus();
+                checkAndSyncTimeouts();
+            }, 10000);
         });
 
-        // --- 3. 優化 Realtime 即時訂閱機制 (無閃爍局部繪製) ---
+        // --- Realtime 即時訂閱機制 ---
         function initRealtimeSubscription() {
             supabaseClient
                 .channel('db-changes')
@@ -473,16 +474,14 @@
                         console.log('偵測到裝置狀態變更:', payload);
                         checkDeviceStatus();
 
-                        // 僅更新記憶體中的 userDevicesList 對應項目並重繪 UI，絕對不調用 fetchUserDevicesFromSupabase()
+                        // 局部更新對應裝置卡片的狀態，避免畫面重新整理閃爍
                         const updatedDevice = payload.new;
                         if (updatedDevice && updatedDevice.device_id) {
-                            const target = userDevicesList.find(d => d.id === updatedDevice.device_id);
-                            if (target) {
-                                target.status = updatedDevice.status;
-                                target.updated_at = updatedDevice.updated_at;
-                                if (updatedDevice.bed_label) {
-                                    target.name = updatedDevice.bed_label;
-                                }
+                            const targetDev = userDevicesList.find(d => d.id === updatedDevice.device_id);
+                            if (targetDev) {
+                                targetDev.status = updatedDevice.status || 'offline';
+                                if (updatedDevice.bed_label) targetDev.name = updatedDevice.bed_label;
+                                targetDev.updated_at = updatedDevice.updated_at;
                                 renderDeviceListUI();
                             }
                         }
@@ -665,10 +664,12 @@
             checkDeviceStatus();
         }
 
-        // --- 2. 查詢當前帳號綁定的所有裝置 (計算真實狀態，避免逾時脫鉤) ---
+        // 查詢當前帳號綁定的所有裝置
         async function fetchUserDevicesFromSupabase() {
             const container = document.getElementById('device-list-container');
-            container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
+            if (userDevicesList.length === 0) {
+                container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
+            }
 
             try {
                 const url = `${SUPABASE_BASE_URL}/user_devices?user_account=eq.${encodeURIComponent(currentAccountId)}&select=device_id`;
@@ -684,7 +685,7 @@
                 const validRows = dataRows.filter(r => r.device_id && r.device_id !== 'UNBOUND');
 
                 if (response.ok && validRows.length > 0) {
-                    userDevicesList = [];
+                    let newList = [];
                     for (const r of validRows) {
                         const devId = r.device_id;
                         const statusUrl = `${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(devId)}`;
@@ -697,17 +698,20 @@
                         const statusRows = await statusRes.json();
                         const statusObj = (Array.isArray(statusRows) && statusRows.length > 0) ? statusRows[0] : {};
 
-                        userDevicesList.push({
+                        const isOnline = isDeviceOnline(statusObj.updated_at, statusObj.status);
+
+                        newList.push({
                             id: devId,
-                            name: statusObj.bed_label || '東庚翻身床',
-                            status: statusObj.status || 'offline',
+                            name: statusObj.bed_label || devId,
+                            status: isOnline ? 'online' : 'offline',
                             updated_at: statusObj.updated_at
                         });
                     }
 
-                    if (userDevicesList.length > 0) {
-                        const first = userDevicesList[0];
-                        selectDevice(first.id, first.name);
+                    userDevicesList = newList;
+
+                    if (userDevicesList.length > 0 && !currentDeviceId) {
+                        selectDevice(userDevicesList[0].id, userDevicesList[0].name);
                     }
                 } else {
                     userDevicesList = [];
@@ -732,15 +736,48 @@
             }
         }
 
-        // --- 4. 精準渲染裝置卡片列表 (利用 isDeviceOnline 計算真正的線上標籤) ---
+        // 背景定期巡檢：檢查是否有裝置超過 40 秒未上報心跳，若是則本地改為 offline 並同步寫回資料庫
+        async function checkAndSyncTimeouts() {
+            let hasChanged = false;
+            for (const dev of userDevicesList) {
+                if (dev.status === 'online') {
+                    const online = isDeviceOnline(dev.updated_at, 'online');
+                    if (!online) {
+                        dev.status = 'offline';
+                        hasChanged = true;
+                        // 同步寫回 Supabase 資料庫，讓其他前端也能 Realtime 收到離線狀態
+                        try {
+                            await fetch(`${SUPABASE_BASE_URL}/device_status?device_id=eq.${encodeURIComponent(dev.id)}`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'apikey': SUPABASE_ANON_KEY,
+                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                    'Content-Type': 'application/json',
+                                    'Prefer': 'return=minimal'
+                                },
+                                body: JSON.stringify({ status: 'offline' })
+                            });
+                            console.log(`裝置 ${dev.id} 超時未回應，已自動同步更新為離線。`);
+                        } catch (err) {
+                            console.error(`同步更新裝置 ${dev.id} 離線狀態失敗:`, err);
+                        }
+                    }
+                }
+            }
+            if (hasChanged) {
+                renderDeviceListUI();
+                checkDeviceStatus();
+            }
+        }
+
+        // 渲染裝置卡片列表
         function renderDeviceListUI() {
             const container = document.getElementById('device-list-container');
             container.innerHTML = '';
 
             userDevicesList.forEach(dev => {
                 const isSelected = dev.id === currentDeviceId;
-                const online = isDeviceOnline(dev);
-
+                const isOnline = dev.status === 'online';
                 const card = document.createElement('div');
                 card.className = `p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${isSelected ? 'bg-slate-900 border-emerald-500/60 shadow-md' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
                     }`;
@@ -762,8 +799,8 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <span class="text-[10px] ${online ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded">
-                            ${online ? '線上運作' : '離線'}
+                        <span class="text-[10px] ${isOnline ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded">
+                            ${isOnline ? '線上運作' : '離線'}
                         </span>
                         <button onclick="removeDeviceBinding('${dev.id}', event, this)" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 px-2 py-1 rounded text-[11px] transition">
                             🗑️ 解除
@@ -1202,15 +1239,22 @@
 
                 if (rows && rows.length > 0) {
                     const device = rows[0];
+                    const dbStatus = device.status;
+                    const updatedAt = device.updated_at;
 
                     if (device.bed_label) {
                         document.getElementById('current-device-location').textContent = device.bed_label;
                     }
 
-                    if (isDeviceOnline(device)) {
-                        updateConnectionUI('wifi', 'connected', '裝置線上');
+                    if (updatedAt) {
+                        const online = isDeviceOnline(updatedAt, dbStatus);
+                        if (online) {
+                            updateConnectionUI('wifi', 'connected', '裝置線上');
+                        } else {
+                            updateConnectionUI('wifi', 'error', '裝置離線(逾時)');
+                        }
                     } else {
-                        updateConnectionUI('wifi', 'error', device.status === 'online' ? '裝置離線(逾時)' : '裝置離線');
+                        updateConnectionUI('wifi', 'error', '無裝置資料');
                     }
                 } else {
                     updateConnectionUI('wifi', 'error', '無裝置資料');
