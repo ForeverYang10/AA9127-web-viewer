@@ -1010,14 +1010,15 @@
             }
 
            try {
-                // 1. 查詢運作區間 (加上防快取時間戳記 &_t)
-                const sessionUrl = `${SUPABASE_BASE_URL}/v_device_operation_sessions?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.start&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=start_time,end_time,duration_seconds&_t=${new Date().getTime()}`;
+                // 1. 查詢運作區間 (不使用不合法的 &_t 參數，改用 fetch 的 cache 控制)
+                const sessionUrl = `${SUPABASE_BASE_URL}/v_device_operation_sessions?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.start&start_time=gte.${startDate.toISOString()}&start_time=lte.${endDate.toISOString()}&select=start_time,end_time,duration_seconds`;
 
                 const sessionRes = await fetch(sessionUrl, {
+                    cache: 'no-store', // 強制瀏覽器不使用快取
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Cache-Control': 'no-cache'
+                        'Cache-Control': 'no-cache, no-store, must-reload'
                     }
                 });
 
@@ -1037,25 +1038,27 @@
                 const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
                 const idleHours = (idleSeconds / 3600).toFixed(1);
 
-                // 2. 獨立查詢左側翻身次數 (turn_left) - 加上防快取時間戳記 &_t
-                const leftUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_left&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id&_t=${new Date().getTime()}`;
+                // 2. 獨立查詢左側翻身次數 (turn_left)
+                const leftUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_left&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id`;
                 const leftRes = await fetch(leftUrl, {
+                    cache: 'no-store',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Cache-Control': 'no-cache'
+                        'Cache-Control': 'no-cache, no-store, must-reload'
                     }
                 });
                 const leftRows = await leftRes.json();
                 const leftCount = Array.isArray(leftRows) ? leftRows.length : 0;
 
-                // 3. 獨立查詢右側翻身次數 (turn_right) - 加上防快取時間戳記 &_t
-                const rightUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_right&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id&_t=${new Date().getTime()}`;
+                // 3. 獨立查詢右側翻身次數 (turn_right)
+                const rightUrl = `${SUPABASE_BASE_URL}/device_logs?device_id=eq.${encodeURIComponent(currentDeviceId)}&action=eq.turn_right&recorded_at=gte.${startDate.toISOString()}&recorded_at=lte.${endDate.toISOString()}&select=id`;
                 const rightRes = await fetch(rightUrl, {
+                    cache: 'no-store',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Cache-Control': 'no-cache'
+                        'Cache-Control': 'no-cache, no-store, must-reload'
                     }
                 });
                 const rightRows = await rightRes.json();
