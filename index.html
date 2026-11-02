@@ -180,7 +180,7 @@
             <div
                 class="flex flex-wrap justify-between items-center bg-slate-900/50 p-2 rounded-lg border border-slate-800 gap-2">
                 <div class="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <span class="font-semibold text-slate-300 px-1">區間:</span>
+                    <span class="font-semibold text-slate-300 px-1">統計區間:</span>
                     <button id="range-today" onclick="setRange('today')"
                         class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
                     <button id="range-weekly" onclick="setRange('weekly')"
@@ -714,7 +714,7 @@
                         <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800 text-center space-y-3">
                             <div class="text-amber-400 text-base font-semibold">目前尚無綁定任何翻身床</div>
                             <p class="text-slate-400 text-xs sm:text-sm">請點擊下方按鈕或切換至「裝置綁定」透過藍牙搜尋並綁定新翻身床。</p>
-                            <button onclick="switchTab('wifi')" class="bg-emerald-600 text-white text-xs sm:text-sm px-4 py-2 rounded-lg font-medium shadow">前往藍牙配網</button>
+                            <button onclick="switchTab('wifi')" class="bg-emerald-600 text-white text-xs sm:text-sm px-4 py-2 rounded-lg font-medium shadow">前往裝置綁定</button>
                         </div>
                     `;
                     return;
@@ -1188,7 +1188,6 @@
                         "單次運作時間": formatSecondsToHMS(session.duration_seconds),
                         "左側翻身次數": leftCount,
                         "右側翻身次數": rightCount,
-                        "裝置名稱": deviceName,
                         "裝置ID": currentDeviceId,
                         "使用者ID": currentAccountId || "Unknown"
                     };
@@ -1205,7 +1204,6 @@
                         { wch: 14 },
                         { wch: 14 },
                         { wch: 14 },
-                        { wch: 18 },
                         { wch: 22 },
                         { wch: 22 }
                     ];
@@ -1213,7 +1211,7 @@
                     XLSX.utils.book_append_sheet(workbook, worksheet, `${rangeTag}運作歷程`);
                     XLSX.writeFile(workbook, fileName);
                 } else {
-                    const headers = ["日期", "單次運作時間", "左側翻身次數", "右側翻身次數", "裝置名稱", "裝置ID", "使用者ID"];
+                    const headers = ["日期", "單次運作時間", "左側翻身次數", "右側翻身次數", "裝置ID", "使用者ID"];
                     let csvContent = headers.join(',') + '\r\n';
                     exportData.forEach(row => {
                         const line = [
@@ -1221,7 +1219,6 @@
                             `"${row["單次運作時間"]}"`,
                             row["左側翻身次數"],
                             row["右側翻身次數"],
-                            `"${row["裝置名稱"]}"`,
                             `"${row["裝置ID"]}"`,
                             `"${row["使用者ID"]}"`
                         ].join(',');
