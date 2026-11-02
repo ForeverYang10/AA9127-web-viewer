@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>東庚翻身床 - 智慧照護與配網管理</title>
+    <title>東庚翻身床 - 運作歷程統計</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js for data visualization -->
@@ -82,27 +82,27 @@
         <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div class="text-center space-y-2">
                 <div
-                    class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 font-bold text-2xl mx-auto mb-3">
+                    class="w-14 h-14 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 font-bold text-3xl mx-auto mb-3">
                     🛏️
                 </div>
-                <h2 class="text-2xl font-extrabold text-emerald-400">東庚翻身床</h2>
-                <p class="text-slate-400 text-xs sm:text-sm">請輸入您的照護帳號或代碼以檢視綁定裝置</p>
+                <h2 class="text-3xl font-extrabold text-emerald-400">東庚翻身床</h2>
+                <p class="text-slate-400 text-sm sm:text-base">請輸入您的使用者代碼以檢視綁定裝置</p>
             </div>
 
             <form onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">照護帳號 / 使用者代碼</label>
+                    <label class="block text-sm font-semibold text-slate-300 mb-1.5">使用者代碼</label>
                     <input id="input-account-id" type="text" placeholder="例：home_user_01 或 demo" required
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition">
+                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-base transition">
                 </div>
                 <button type="submit"
-                    class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 text-sm flex items-center justify-center gap-2">
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 text-base flex items-center justify-center gap-2">
                     <span>🔑 進入主畫面</span>
                 </button>
             </form>
 
             <div class="text-center">
-                <p class="text-[11px] text-slate-500">提示：輸入帳號將自動註冊開通，無須密碼認證</p>
+                <p class="text-xs text-slate-500">提示：輸入使用者代碼將自動註冊開通，無須密碼認證</p>
             </div>
         </div>
     </div>
@@ -113,63 +113,61 @@
 
         <!-- 頂部帳號與裝置狀態列 -->
         <div
-            class="flex items-center justify-between bg-slate-900/80 p-2.5 sm:p-3 rounded-xl border border-slate-700/60">
-            <div class="flex items-center space-x-2.5">
+            class="flex items-center justify-between bg-slate-900/80 p-3 sm:p-3.5 rounded-xl border border-slate-700/60">
+            <div class="flex items-center space-x-3">
                 <div
-                    class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-base">
+                    class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">
                     👤
                 </div>
                 <div>
-                    <div class="text-[10px] text-slate-400">目前使用者</div>
-                    <div id="display-account-id" class="text-xs font-bold text-emerald-400">未登入</div>
+                    <div class="text-xs text-slate-400">目前使用者</div>
+                    <div id="display-account-id" class="text-sm font-bold text-emerald-400">未登入</div>
                 </div>
             </div>
-            <div class="flex items-center space-x-1.5">
+            <div class="flex items-center space-x-2">
                 <button onclick="switchAccount()"
-                    class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+                    class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1">
                     <span>🔄 切換</span>
                 </button>
                 <button id="btn-delete-account" onclick="deleteCurrentAccount()"
-                    class="bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/60 text-rose-300 hover:text-rose-200 px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+                    class="bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/60 text-rose-300 hover:text-rose-200 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1">
                     <span>🗑️ 刪除帳戶</span>
                 </button>
             </div>
         </div>
 
         <!-- 頁頭與主標題 -->
-        <div class="text-center space-y-1">
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-wide">東庚翻身床</h1>
-            <p class="text-slate-400 text-xs sm:text-sm">智慧協助翻身與照護歷程統計</p>
+        <div class="text-center space-y-1.5">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-emerald-400 tracking-wide">東庚翻身床</h1>
+            <p class="text-slate-400 text-sm sm:text-base">運作歷程統計</p>
         </div>
 
         <!-- 頂部頁籤導覽 (Tabs) -->
-        <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 text-xs sm:text-sm">
+        <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 text-sm sm:text-base">
             <button id="tab-history-btn" onclick="switchTab('history')"
-                class="flex-1 py-2 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md">
+                class="flex-1 py-2.5 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md">
                 📊 使用歷程
             </button>
             <button id="tab-devices-btn" onclick="switchTab('devices')"
-                class="flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
+                class="flex-1 py-2.5 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
                 📱 裝置清單
             </button>
             <button id="tab-wifi-btn" onclick="switchTab('wifi')"
-                class="flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
-                📶 配網設定
+                class="flex-1 py-2.5 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
+                📶 裝置綁定
             </button>
         </div>
 
         <!-- 裝置狀態卡片 (公用區塊) -->
-        <div class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 space-y-2">
+        <div class="bg-slate-900/70 p-3.5 sm:p-4 rounded-xl border border-slate-700/60 space-y-2">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    <span id="current-device-name" class="text-xs sm:text-sm font-bold text-slate-200">未選擇裝置</span>
-                    <span id="current-device-location"
-                        class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">請配對翻身床</span>
+                    <span id="current-device-name" class="text-sm sm:text-base font-bold text-slate-200">未選取裝置</span>
                 </div>
                 <div class="flex items-center space-x-2">
                     <span id="wifi-dot"
-                        class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
-                    <span id="wifi-status-text" class="text-xs font-bold text-slate-300">檢查中...</span>
+                        class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                    <span id="wifi-status-text" class="text-xs sm:text-sm font-bold text-slate-300">檢查中...</span>
                 </div>
             </div>
         </div>
@@ -179,37 +177,37 @@
 
             <!-- 時間範圍切換選單與 CSV 匯出按鈕 -->
             <div
-                class="flex flex-wrap justify-between items-center bg-slate-900/50 p-1.5 rounded-lg border border-slate-800 gap-2">
-                <div class="flex items-center gap-1 text-xs">
-                    <span class="text-xs font-semibold text-slate-300 px-1">區間:</span>
+                class="flex flex-wrap justify-between items-center bg-slate-900/50 p-2 rounded-lg border border-slate-800 gap-2">
+                <div class="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <span class="font-semibold text-slate-300 px-1">區間:</span>
                     <button id="range-today" onclick="setRange('today')"
-                        class="px-2.5 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
+                        class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
                     <button id="range-weekly" onclick="setRange('weekly')"
-                        class="px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
+                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
                     <button id="range-monthly" onclick="setRange('monthly')"
-                        class="px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
+                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
                 </div>
                 <!-- 📥 Excel 匯出功能按鈕 -->
                 <button onclick="exportDeviceLogsToCSV()"
-                    class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-2.5 py-1 rounded-md transition flex items-center gap-1 shadow">
-                    <span>📥 匯出 Excel</span>
+                    class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs sm:text-sm font-semibold px-3 py-1 rounded-md transition flex items-center gap-1 shadow">
+                    <span>📥 匯出 試算表</span>
                 </button>
             </div>
 
             <!-- 1. 翻身時段甘特圖卡片 -->
             <div id="timeline-card"
-                class="bg-slate-900/70 p-3 sm:p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-2">
-                <div class="w-full flex justify-between items-center text-xs text-slate-400 px-1">
+                class="bg-slate-900/70 p-3.5 sm:p-4 rounded-xl border border-slate-700/60 flex flex-col space-y-2">
+                <div class="w-full flex justify-between items-center text-xs sm:text-sm text-slate-400 px-1">
                     <span id="timeline-title" class="font-bold text-slate-200">床體運作時間軸</span>
-                    <span class="text-[10px] text-slate-500">當日時刻 (00~24h)</span>
+                    <span class="text-xs text-slate-500">當日時刻 (00~24h)</span>
                 </div>
 
                 <!-- 甘特圖 Canvas 容器 -->
-                <div id="timeline-canvas-wrapper" class="relative w-full h-44 my-1">
+                <div id="timeline-canvas-wrapper" class="relative w-full h-48 my-1">
                     <canvas id="timelineChart"></canvas>
                 </div>
 
-                <div class="flex justify-center gap-4 text-xs text-slate-300 pt-1">
+                <div class="flex justify-center gap-4 text-xs sm:text-sm text-slate-300 pt-1">
                     <div class="flex items-center gap-1.5">
                         <span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span>
                         <span>床體運作時段</span>
@@ -222,19 +220,19 @@
                 <!-- 上半部：關鍵統計數據區塊 -->
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-slate-800/60 p-3.5 rounded-xl border border-sky-500/30 text-center space-y-1">
-                        <div class="text-xs text-sky-400 font-semibold flex items-center justify-center gap-1">
+                        <div class="text-xs sm:text-sm text-sky-400 font-semibold flex items-center justify-center gap-1">
                             <span>👈 左側翻身計數</span>
                         </div>
-                        <div id="stat-left-count" class="text-lg sm:text-2xl font-extrabold text-sky-300">0 <span
-                                class="text-xs font-normal text-slate-400">次</span></div>
+                        <div id="stat-left-count" class="text-xl sm:text-3xl font-extrabold text-sky-300">0 <span
+                                class="text-xs sm:text-sm font-normal text-slate-400">次</span></div>
                     </div>
 
                     <div class="bg-slate-800/60 p-3.5 rounded-xl border border-indigo-500/30 text-center space-y-1">
-                        <div class="text-xs text-indigo-400 font-semibold flex items-center justify-center gap-1">
+                        <div class="text-xs sm:text-sm text-indigo-400 font-semibold flex items-center justify-center gap-1">
                             <span>👉 右側翻身計數</span>
                         </div>
-                        <div id="stat-right-count" class="text-lg sm:text-2xl font-extrabold text-indigo-300">0 <span
-                                class="text-xs font-normal text-slate-400">次</span></div>
+                        <div id="stat-right-count" class="text-xl sm:text-3xl font-extrabold text-indigo-300">0 <span
+                                class="text-xs sm:text-sm font-normal text-slate-400">次</span></div>
                     </div>
                 </div>
 
@@ -243,25 +241,25 @@
 
                 <!-- 下半部：圓餅圖區塊 -->
                 <div class="flex flex-col items-center space-y-3">
-                    <div class="w-full flex justify-between items-center text-xs text-slate-400">
+                    <div class="w-full flex justify-between items-center text-xs sm:text-sm text-slate-400">
                         <span id="chart-title" class="font-bold text-slate-200">床體運作狀態時間佔比</span>
-                        <span id="chart-unit" class="text-[11px] text-slate-500">單位：小時</span>
+                        <span id="chart-unit" class="text-xs text-slate-500">單位：小時</span>
                     </div>
 
                     <!-- 圓餅 / 環形圖 Canvas -->
-                    <div class="relative w-44 h-44 sm:w-52 sm:h-52 my-1 overflow-visible">
+                    <div class="relative w-48 h-48 sm:w-56 sm:h-56 my-1 overflow-visible">
                         <!-- 圖表 Canvas -->
                         <canvas id="usageChart" class="relative z-10 cursor-pointer"></canvas>
                         <!-- 中央總時數文字 -->
                         <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
-                            <span class="text-[10px] text-slate-400">總運作時間</span>
-                            <span id="chart-center-total" class="text-base sm:text-lg font-bold text-emerald-400">0.0
+                            <span class="text-xs text-slate-400">總運作時間</span>
+                            <span id="chart-center-total" class="text-lg sm:text-xl font-bold text-emerald-400">0.0
                                 h</span>
                         </div>
                     </div>
 
                     <div id="chart-legend-custom"
-                        class="flex flex-wrap justify-center gap-3 text-xs text-slate-300 pt-1">
+                        class="flex flex-wrap justify-center gap-3 text-xs sm:text-sm text-slate-300 pt-1">
                         <!-- 由 JS 動態生成 Legend -->
                     </div>
                 </div>
@@ -273,86 +271,75 @@
         <div id="view-devices" class="space-y-4 hidden">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-sm font-bold text-slate-200">名下綁定翻身床</h2>
-                    <p class="text-[11px] text-slate-400">帳號 <span id="device-tab-account-id"
+                    <h2 class="text-base font-bold text-slate-200">名下綁定翻身床</h2>
+                    <p class="text-xs text-slate-400">帳號 <span id="device-tab-account-id"
                             class="text-emerald-400 font-mono">--</span> 專屬之裝置</p>
                 </div>
                 <button onclick="fetchUserDevicesFromSupabase()"
-                    class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                    class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
                     <span>🔄 重新整理</span>
                 </button>
             </div>
 
             <!-- 動態渲染裝置列表 -->
             <div id="device-list-container" class="space-y-2.5">
-                <div class="text-center py-6 text-slate-500 text-xs">載入中...</div>
+                <div class="text-center py-6 text-slate-500 text-sm">載入中...</div>
             </div>
         </div>
 
         <!-- ==================== VIEW 3: Wi-Fi 配網選單 (BLE Provisioning) ==================== -->
         <div id="view-wifi" class="space-y-4 hidden">
 
-            <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
-                <div class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+            <div class="space-y-3.5 bg-slate-900/50 p-4 sm:p-5 rounded-xl border border-slate-700/50">
+                <div class="text-sm font-semibold text-emerald-400 flex items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10 10 0 0114.142 0M2.828 9.9a15 15 0 0120.344 0">
                         </path>
                     </svg>
-                    發送 Wi-Fi 憑證至目標翻身床
+                    設定翻身床的 Wi-Fi 連線
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 名稱 (SSID)</label>
-                    <input id="wifi-ssid" type="text" placeholder="請輸入無線網路名稱"
-                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm">
+                    <label class="block text-xs sm:text-sm font-semibold text-slate-300 mb-1">Wi-Fi 名稱 (SSID)</label>
+                    <input id="wifi-ssid" type="text" placeholder="請輸入欲連接的無線網路名稱"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm sm:text-base">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
+                    <label class="block text-xs sm:text-sm font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
                     <div class="relative">
-                        <input id="wifi-pass" type="password" placeholder="請輸入無線網路密碼"
-                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm pr-12">
+                        <input id="wifi-pass" type="password" placeholder="請輸入欲連接的無線網路密碼"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm sm:text-base pr-14">
                         <button type="button" id="toggle-pass-btn" onclick="togglePassVisibility()"
-                            class="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-200">
+                            class="absolute right-3 top-2.5 text-xs sm:text-sm text-slate-400 hover:text-slate-200">
                             顯示
                         </button>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between text-xs text-slate-400 pt-1">
-                    <span class="flex items-center gap-1.5 text-[11px]">
+                <div class="flex items-center justify-between text-xs sm:text-sm text-slate-400 pt-1">
+                    <span class="flex items-center gap-1.5 text-xs">
                         <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
-                        已啟用 LocalStorage 快取帶入
+                        已啟用瀏覽器快取帶入 Wi-Fi 帳密
                     </span>
                     <button onclick="clearCachedCredentials()"
-                        class="text-rose-400 hover:underline text-[11px]">清除快取</button>
+                        class="text-rose-400 hover:underline text-xs">清除快取</button>
                 </div>
-            </div>
-
-            <!-- 藍牙 BLE 連線狀態 -->
-            <div
-                class="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
-                <div class="flex items-center space-x-2">
-                    <span id="ble-dot"
-                        class="w-2.5 h-2.5 bg-slate-500 rounded-full inline-block transition-colors"></span>
-                    <span id="ble-status-text" class="font-bold text-slate-300">藍牙未連線</span>
-                </div>
-                <span id="target-ble-device" class="text-[10px] text-slate-500 font-mono">目標: 掃描中自動抓取</span>
             </div>
 
             <!-- 連線觸發按鈕 -->
             <button onclick="startBLEProvisioning()"
-                class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 text-sm">
-                <span>🔍 搜尋藍牙並傳送 Wi-Fi 設定</span>
+                class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 text-sm sm:text-base">
+                <span>🔍 搜尋鄰近翻身床並設定 Wi-Fi 連線以進行綁定</span>
             </button>
 
             <!-- 藍牙通訊狀態 Log -->
             <div class="space-y-1">
-                <div class="text-[11px] text-slate-400 font-medium px-1">配網通訊紀錄：</div>
+                <div class="text-xs text-slate-400 font-medium px-1">綁定裝置紀錄：</div>
                 <div id="status-log"
-                    class="bg-slate-900/90 rounded-xl p-3 text-xs font-mono text-slate-300 border border-slate-800 h-28 overflow-y-auto space-y-1">
-                    <div class="text-slate-500">> 系統就緒，等待開始配網...</div>
+                    class="bg-slate-900/90 rounded-xl p-3 text-xs sm:text-sm font-mono text-slate-300 border border-slate-800 h-32 overflow-y-auto space-y-1">
+                    <div class="text-slate-500">> 系統就緒，等待綁定新裝置...</div>
                 </div>
             </div>
 
@@ -422,7 +409,7 @@
                 icon = "ℹ️";
             }
 
-            toast.className = `toast-enter pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-2xl backdrop-blur-md text-xs font-semibold ${bgBorder}`;
+            toast.className = `toast-enter pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-2xl backdrop-blur-md text-sm font-semibold ${bgBorder}`;
             toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
 
             container.appendChild(toast);
@@ -485,7 +472,6 @@
                             const targetDev = userDevicesList.find(d => d.id === updatedDevice.device_id);
                             if (targetDev) {
                                 targetDev.status = updatedDevice.status || 'offline';
-                                if (updatedDevice.bed_label) targetDev.name = updatedDevice.bed_label;
                                 targetDev.updated_at = updatedDevice.updated_at;
                                 renderDeviceListUI();
                             }
@@ -673,7 +659,7 @@
         async function fetchUserDevicesFromSupabase() {
             const container = document.getElementById('device-list-container');
             if (userDevicesList.length === 0) {
-                container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">正自 Supabase 查詢綁定裝置...</div>';
+                container.innerHTML = '<div class="text-center py-6 text-slate-500 text-sm">正自 Supabase 查詢綁定裝置...</div>';
             }
 
             try {
@@ -707,7 +693,7 @@
 
                         newList.push({
                             id: devId,
-                            name: statusObj.bed_label || devId,
+                            name: devId,
                             status: isOnline ? 'online' : 'offline',
                             updated_at: statusObj.updated_at
                         });
@@ -721,14 +707,13 @@
                 } else {
                     userDevicesList = [];
                     currentDeviceId = '';
-                    document.getElementById('current-device-name').textContent = '未選擇裝置';
-                    document.getElementById('current-device-location').textContent = '請配對翻身床';
+                    document.getElementById('current-device-name').textContent = '未選取裝置';
 
                     container.innerHTML = `
                         <div class="bg-slate-900/50 p-6 rounded-xl border border-slate-800 text-center space-y-3">
-                            <div class="text-amber-400 text-sm font-semibold">目前尚無綁定任何翻身床</div>
-                            <p class="text-slate-400 text-xs">請點擊下方按鈕或切換至「配網設定」透過藍牙搜尋並配對新翻身床。</p>
-                            <button onclick="switchTab('wifi')" class="bg-emerald-600 text-white text-xs px-4 py-2 rounded-lg font-medium shadow">前往藍牙配網</button>
+                            <div class="text-amber-400 text-base font-semibold">目前尚無綁定任何翻身床</div>
+                            <p class="text-slate-400 text-xs sm:text-sm">請點擊下方按鈕或切換至「裝置綁定」透過藍牙搜尋並綁定新翻身床。</p>
+                            <button onclick="switchTab('wifi')" class="bg-emerald-600 text-white text-xs sm:text-sm px-4 py-2 rounded-lg font-medium shadow">前往藍牙配網</button>
                         </div>
                     `;
                     return;
@@ -737,7 +722,7 @@
                 renderDeviceListUI();
             } catch (err) {
                 console.error('Supabase 裝置清單查詢失敗', err);
-                container.innerHTML = '<div class="text-center py-4 text-rose-400 text-xs">資料庫連線失敗，請檢查網路連線。</div>';
+                container.innerHTML = '<div class="text-center py-4 text-rose-400 text-sm">資料庫連線失敗，請檢查網路連線。</div>';
             }
         }
 
@@ -761,19 +746,16 @@
 
                 card.innerHTML = `
                     <div class="flex items-center space-x-3">
-                        <div class="w-9 h-9 rounded-lg ${isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'} flex items-center justify-center font-bold text-sm">
+                        <div class="w-10 h-10 rounded-lg ${isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'} flex items-center justify-center font-bold text-base">
                             🛏️
                         </div>
-                        <div>
-                            <div class="text-xs font-bold text-slate-200">${dev.name}</div>
-                            <div class="text-[10px] text-slate-400 font-mono">${dev.id}</div>
-                        </div>
+                        <div class="text-xs sm:text-sm font-bold text-slate-200 font-mono">${dev.id}</div>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <span class="text-[10px] ${isOnline ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded">
-                            ${isOnline ? '線上運作' : '離線'}
+                        <span class="text-xs ${isOnline ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/50' : 'text-slate-400 bg-slate-800'} px-2.5 py-0.5 rounded">
+                            ${isOnline ? '在線' : '離線'}
                         </span>
-                        <button onclick="removeDeviceBinding('${dev.id}', event, this)" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 px-2 py-1 rounded text-[11px] transition">
+                        <button onclick="removeDeviceBinding('${dev.id}', event, this)" class="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 px-2.5 py-1 rounded text-xs transition">
                             🗑️ 解除
                         </button>
                     </div>
@@ -786,8 +768,6 @@
             currentDeviceId = id;
             currentDeviceLabel = name;
             document.getElementById('current-device-name').textContent = id;
-            document.getElementById('current-device-location').textContent = name;
-            document.getElementById('target-ble-device').textContent = `目標: ${id}`;
             loadUsageDataFromSupabase(currentRange);
         }
 
@@ -805,8 +785,8 @@
             devicesView.classList.add('hidden');
             wifiView.classList.add('hidden');
 
-            const inactiveClass = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
-            const activeClass = "flex-1 py-2 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
+            const inactiveClass = "flex-1 py-2.5 font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200";
+            const activeClass = "flex-1 py-2.5 font-semibold rounded-lg transition-all duration-200 bg-emerald-600 text-white shadow-md";
 
             historyBtn.className = inactiveClass;
             devicesBtn.className = inactiveClass;
@@ -831,9 +811,9 @@
             ['today', 'weekly', 'monthly'].forEach(r => {
                 const btn = document.getElementById(`range-${r}`);
                 if (r === range) {
-                    btn.className = "px-2.5 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                    btn.className = "px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
                 } else {
-                    btn.className = "px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800";
+                    btn.className = "px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800";
                 }
             });
 
@@ -914,7 +894,7 @@
                             ticks: {
                                 color: '#94a3b8',
                                 stepSize: 4,
-                                font: { size: 10 },
+                                font: { size: 11 },
                                 callback: function (value) {
                                     return value.toString().padStart(2, '0') + 'h';
                                 }
@@ -924,7 +904,7 @@
                         y: {
                             ticks: {
                                 color: '#cbd5e1',
-                                font: { size: 10, weight: 'bold' },
+                                font: { size: 11, weight: 'bold' },
                                 padding: 4
                             },
                             grid: {
@@ -945,10 +925,11 @@
                                 label: function (ctx) {
                                     const raw = ctx.raw;
                                     if (raw && raw.intervals) {
-                                        let lines = raw.intervals.map(inv => ` 運作時段: ${inv.timeStr}`);
-                                        if (raw.totalCount !== undefined) {
-                                            lines.push(` 累積運作區間: ${raw.totalCount} 次`);
+                                        let lines = [];
+                                        if (raw.sessionIndex !== undefined) {
+                                            lines.push(` 第 ${raw.sessionIndex} 次運作`);
                                         }
+                                        raw.intervals.forEach(inv => lines.push(` 運作時段: ${inv.timeStr}`));
                                         return lines;
                                     }
                                     return '';
@@ -997,14 +978,15 @@
                 const startIso = startDate.toISOString();
                 const endIso = endDate.toISOString();
 
-                // 1. 序列化步驟一：先查運作區間
+                // 1. 序列化步驟一：先查運作區間 (由早到晚按時間升冪排序)
                 const { data: sessionRows, error: sessionErr } = await supabaseClient
                     .from('v_device_operation_sessions')
                     .select('start_time, end_time, duration_seconds')
                     .eq('device_id', currentDeviceId)
                     .eq('action', 'start')
                     .gte('start_time', startIso)
-                    .lte('start_time', endIso);
+                    .lte('start_time', endIso)
+                    .order('start_time', { ascending: true });
 
                 if (sessionErr) console.error('查詢運作區間錯誤:', sessionErr);
                 const validSessions = Array.isArray(sessionRows) ? sessionRows : [];
@@ -1045,8 +1027,8 @@
                 const safeRightCount = rightCount || 0;
 
                 // 4. 更新 UI 數字
-                document.getElementById('stat-left-count').innerHTML = `${safeLeftCount} <span class="text-xs font-normal text-slate-400">次</span>`;
-                document.getElementById('stat-right-count').innerHTML = `${safeRightCount} <span class="text-xs font-normal text-slate-400">次</span>`;
+                document.getElementById('stat-left-count').innerHTML = `${safeLeftCount} <span class="text-xs sm:text-sm font-normal text-slate-400">次</span>`;
+                document.getElementById('stat-right-count').innerHTML = `${safeRightCount} <span class="text-xs sm:text-sm font-normal text-slate-400">次</span>`;
                 document.getElementById('chart-center-total').textContent = `${activeHours} h`;
 
                 // 5. 更新環形圖
@@ -1126,11 +1108,9 @@
                 return;
             }
 
-            // 取得目前選取裝置的顯示名稱（若無則顯示裝置 ID）
             const deviceName = currentDeviceLabel || currentDeviceId;
             showToast(`正在匯出裝置【${deviceName}】的對應區間報表...`, "info");
 
-            // 1. 根據 currentRange 計算對應的時間起止點
             const now = new Date();
             let startDate = new Date();
             let endDate = new Date(now);
@@ -1155,11 +1135,10 @@
             const endIso = endDate.toISOString();
 
             try {
-                // 2. 僅查詢【目前裝置 (currentDeviceId)】且在指定區間內的運作紀錄 (v_device_operation_sessions)
                 const { data: sessionRows, error: sessionErr } = await supabaseClient
                     .from('v_device_operation_sessions')
                     .select('start_time, end_time, duration_seconds')
-                    .eq('device_id', currentDeviceId) // 🔒 嚴格限定目前裝置
+                    .eq('device_id', currentDeviceId)
                     .eq('action', 'start')
                     .gte('start_time', startIso)
                     .lte('start_time', endIso)
@@ -1172,11 +1151,10 @@
                     return;
                 }
 
-                // 3. 僅查詢【目前裝置 (currentDeviceId)】且在指定區間內的翻身紀錄 (device_logs)
                 const { data: logRows, error: logErr } = await supabaseClient
                     .from('device_logs')
                     .select('action, recorded_at')
-                    .eq('device_id', currentDeviceId) // 🔒 嚴格限定目前裝置
+                    .eq('device_id', currentDeviceId)
                     .in('action', ['turn_left', 'turn_right'])
                     .gte('recorded_at', startIso)
                     .lte('recorded_at', endIso);
@@ -1185,7 +1163,6 @@
 
                 const validLogs = Array.isArray(logRows) ? logRows : [];
 
-                // 4. 比對 Session 並統計左/右翻身次數
                 const exportData = sessionRows.map(session => {
                     const startMs = new Date(session.start_time).getTime();
                     const endMs = session.end_time ? new Date(session.end_time).getTime() : Date.now();
@@ -1216,7 +1193,6 @@
                     };
                 });
 
-                // 5. 動態產生檔名（包含裝置名稱與時間標籤）
                 const rangeTagMap = { today: '今日', weekly: '本週', monthly: '本月' };
                 const rangeTag = rangeTagMap[currentRange] || currentRange;
                 const fileName = `${deviceName}_${rangeTag}運作歷程_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -1224,19 +1200,18 @@
                 if (typeof XLSX !== 'undefined') {
                     const worksheet = XLSX.utils.json_to_sheet(exportData);
                     worksheet['!cols'] = [
-                        { wch: 14 }, // 日期
-                        { wch: 14 }, // 單次運作時間
-                        { wch: 14 }, // 左側翻身次數
-                        { wch: 14 }, // 右側翻身次數
-                        { wch: 18 }, // 裝置名稱
-                        { wch: 22 }, // 裝置ID
-                        { wch: 22 }  // 使用者ID
+                        { wch: 14 },
+                        { wch: 14 },
+                        { wch: 14 },
+                        { wch: 14 },
+                        { wch: 18 },
+                        { wch: 22 },
+                        { wch: 22 }
                     ];
                     const workbook = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(workbook, worksheet, `${rangeTag}運作歷程`);
                     XLSX.writeFile(workbook, fileName);
                 } else {
-                    // Fallback: CSV 帶入 UTF-8 BOM 避免亂碼
                     const headers = ["日期", "單次運作時間", "左側翻身次數", "右側翻身次數", "裝置名稱", "裝置ID", "使用者ID"];
                     let csvContent = headers.join(',') + '\r\n';
                     exportData.forEach(row => {
@@ -1293,7 +1268,9 @@
                 dayIntervalsMap[key] = { index: idx, bars: [], count: 0 };
             });
 
-            dataRows.forEach(r => {
+            const sortedRows = [...dataRows].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+            sortedRows.forEach(r => {
                 if (!r.start_time || !r.end_time) return;
 
                 const start = new Date(r.start_time);
@@ -1326,9 +1303,9 @@
             if (timelineChartInstance) {
                 const wrapper = document.getElementById('timeline-canvas-wrapper');
                 if (range === 'today') {
-                    wrapper.style.height = '110px';
+                    wrapper.style.height = '120px';
                 } else {
-                    wrapper.style.height = '260px';
+                    wrapper.style.height = '280px';
                 }
 
                 timelineChartInstance.data.labels = labels;
@@ -1340,12 +1317,13 @@
                     const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
                     const entry = dayIntervalsMap[key];
                     if (entry && entry.bars.length > 0) {
-                        entry.bars.forEach(b => {
+                        entry.bars.forEach((b, barIdx) => {
                             flattenedBars.push({
                                 x: b.x,
                                 y: lbl,
                                 intervals: [b],
-                                totalCount: entry.count
+                                totalCount: entry.count,
+                                sessionIndex: barIdx + 1
                             });
                             flattenedColors.push(b.color);
                         });
@@ -1366,7 +1344,7 @@
                 const el = document.createElement('div');
                 el.className = 'flex items-center gap-1.5';
                 el.innerHTML = `
-                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${item.color}"></span>
+                    <span class="w-3 h-3 rounded-full inline-block" style="background-color: ${item.color}"></span>
                     <span>${item.label} (${item.hours}h)</span>
                 `;
                 legendBox.appendChild(el);
@@ -1387,31 +1365,11 @@
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        function updateConnectionUI(target, status, text) {
-            const dot = document.getElementById(`${target}-dot`);
-            const label = document.getElementById(`${target}-status-text`);
-
-            dot.className = "w-2.5 h-2.5 rounded-full inline-block transition-colors";
-            if (status === 'connected') {
-                dot.classList.add('bg-emerald-400', 'shadow-lg', 'shadow-emerald-500/50');
-                label.className = "text-xs font-bold text-emerald-400";
-            } else if (status === 'connecting') {
-                dot.classList.add('bg-amber-400', 'animate-pulse');
-                label.className = "text-xs font-bold text-amber-400";
-            } else if (status === 'error') {
-                dot.classList.add('bg-rose-500');
-                label.className = "text-xs font-bold text-rose-400";
-            } else {
-                dot.classList.add('bg-slate-500');
-                label.className = "text-xs font-bold text-slate-300";
-            }
-            label.textContent = text;
-        }
-
         // Supabase 動態心跳查詢
         async function checkDeviceStatus() {
             if (!currentDeviceId) {
-                updateConnectionUI('wifi', 'error', '未選取裝置');
+                const label = document.getElementById('wifi-status-text');
+                if (label) label.textContent = '未選取裝置';
                 return;
             }
 
@@ -1424,28 +1382,42 @@
                     }
                 });
                 const rows = await response.json();
+                const label = document.getElementById('wifi-status-text');
+                const dot = document.getElementById('wifi-dot');
 
                 if (rows && rows.length > 0) {
                     const device = rows[0];
                     const dbStatus = device.status;
                     const updatedAt = device.updated_at;
 
-                    if (device.bed_label) {
-                        document.getElementById('current-device-location').textContent = device.bed_label;
-                    }
-
                     if (updatedAt) {
                         const online = isDeviceOnline(updatedAt, dbStatus);
                         if (online) {
-                            updateConnectionUI('wifi', 'connected', '裝置線上');
+                            if (dot) dot.className = "w-3 h-3 bg-emerald-400 rounded-full inline-block transition-colors shadow-lg shadow-emerald-500/50";
+                            if (label) {
+                                label.className = "text-xs sm:text-sm font-bold text-emerald-400";
+                                label.textContent = '裝置在線';
+                            }
                         } else {
-                            updateConnectionUI('wifi', 'error', '裝置離線(逾時)');
+                            if (dot) dot.className = "w-3 h-3 bg-rose-500 rounded-full inline-block transition-colors";
+                            if (label) {
+                                label.className = "text-xs sm:text-sm font-bold text-rose-400";
+                                label.textContent = '裝置離線';
+                            }
                         }
                     } else {
-                        updateConnectionUI('wifi', 'error', '無裝置資料');
+                        if (dot) dot.className = "w-3 h-3 bg-rose-500 rounded-full inline-block transition-colors";
+                        if (label) {
+                            label.className = "text-xs sm:text-sm font-bold text-rose-400";
+                            label.textContent = '無裝置資料';
+                        }
                     }
                 } else {
-                    updateConnectionUI('wifi', 'error', '無裝置資料');
+                    if (dot) dot.className = "w-3 h-3 bg-rose-500 rounded-full inline-block transition-colors";
+                    if (label) {
+                        label.className = "text-xs sm:text-sm font-bold text-rose-400";
+                        label.textContent = '無裝置資料';
+                    }
                 }
             } catch (err) {
                 console.error('狀態查詢失敗', err);
@@ -1500,7 +1472,6 @@
             }
 
             try {
-                updateConnectionUI('ble', 'connecting', '掃描藍牙中...');
                 log(`正在掃描東庚翻身床裝置 (DK_AirBed_)...`);
 
                 const device = await navigator.bluetooth.requestDevice({
@@ -1510,10 +1481,9 @@
 
                 const discoveredDeviceId = device.name;
                 log(`已配對裝置：${discoveredDeviceId}，正在建立 GATT 連線...`);
-                updateConnectionUI('ble', 'connecting', '連線中...');
 
                 const server = await device.gatt.connect();
-                updateConnectionUI('ble', 'connected', '藍牙已連線');
+                log('藍牙已連線');
 
                 const service = await server.getPrimaryService(SERVICE_UUID);
                 const characteristic = await service.getCharacteristic(CHAR_RX_UUID);
@@ -1531,13 +1501,12 @@
                 log('✅ 憑證傳送成功！Wi-Fi 資訊已寫入裝置。', 'success');
 
                 device.gatt.disconnect();
-                updateConnectionUI('ble', 'disconnected', '藍牙已斷開');
+                log('藍牙已斷開');
 
                 log(`正在將真實裝置 ${discoveredDeviceId} 綁定至帳號 ${currentAccountId}...`);
                 await registerDeviceToUser(currentAccountId, discoveredDeviceId);
 
             } catch (err) {
-                updateConnectionUI('ble', 'error', '連線失敗');
                 log(`錯誤: ${err.message}`, 'error');
             }
         }
