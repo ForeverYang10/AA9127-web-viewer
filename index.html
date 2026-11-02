@@ -11,6 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Supabase JS Client SDK (Realtime 必須) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS (xlsx) for native Excel export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body {
             background-color: #0f172a;
@@ -175,17 +177,23 @@
         <!-- ==================== VIEW 1: 使用歷程 (Main History Dashboard) ==================== -->
         <div id="view-history" class="space-y-4">
 
-            <!-- 時間範圍切換選單 -->
-            <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded-lg border border-slate-800">
-                <span class="text-xs font-semibold text-slate-300 px-2">統計時間區間</span>
-                <div class="flex gap-1 text-xs">
+            <!-- 時間範圍切換選單與 CSV 匯出按鈕 -->
+            <div
+                class="flex flex-wrap justify-between items-center bg-slate-900/50 p-1.5 rounded-lg border border-slate-800 gap-2">
+                <div class="flex items-center gap-1 text-xs">
+                    <span class="text-xs font-semibold text-slate-300 px-1">區間:</span>
                     <button id="range-today" onclick="setRange('today')"
-                        class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
+                        class="px-2.5 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
                     <button id="range-weekly" onclick="setRange('weekly')"
-                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
+                        class="px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
                     <button id="range-monthly" onclick="setRange('monthly')"
-                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
+                        class="px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
                 </div>
+                <!-- 📥 Excel 匯出功能按鈕 -->
+                <button onclick="exportDeviceLogsToCSV()"
+                    class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-2.5 py-1 rounded-md transition flex items-center gap-1 shadow">
+                    <span>📥 匯出 Excel</span>
+                </button>
             </div>
 
             <!-- 1. 翻身時段甘特圖卡片 -->
@@ -362,7 +370,7 @@
         const SUPABASE_BASE_URL = 'https://cmpndqpsxdnmqrvzhpot.supabase.co/rest/v1';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtcG5kcXBzeGRubXFydnpocG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NDkyMDYsImV4cCI6MjEwODIyNTIwNn0.tXL5t4alplLnqBX0CpknHDuYMdXANOgvzOoOXjcgD94';
 
-        // 初始化 Supabase Client (用於 Realtime 訂閱)
+        // 初始化 Supabase Client (用於 Realtime 訂閱與 SDK 查詢)
         const supabaseClient = supabase.createClient('https://cmpndqpsxdnmqrvzhpot.supabase.co', SUPABASE_ANON_KEY);
 
         let currentAccountId = '';
@@ -374,6 +382,7 @@
         let currentRange = 'today';
         let userDevicesList = [];
         let deleteConfirmTimeout = null;
+        let realtimeDebounceTimer = null;
 
         // --- 字串截斷輔助函式 ---
         function truncateAccountId(id, maxLength = 10) {
@@ -443,7 +452,7 @@
             }, 10000);
         });
 
-        // --- Realtime 即時訂閱機制 ---
+        // --- Realtime 即時訂閱機制 (含 300ms 延遲與防抖動) ---
         function initRealtimeSubscription() {
             supabaseClient
                 .channel('db-changes')
@@ -452,9 +461,16 @@
                     { event: 'INSERT', schema: 'public', table: 'device_logs' },
                     (payload) => {
                         console.log('偵測到歷程資料變更:', payload);
-                        if (currentDeviceId) {
-                            loadUsageDataFromSupabase(currentRange);
-                            showToast("收到最新翻身歷程，圖表已更新", "info");
+                        const newRow = payload.new;
+
+                        if (newRow && newRow.device_id === currentDeviceId) {
+                            if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
+
+                            realtimeDebounceTimer = setTimeout(() => {
+                                console.log('執行延遲資料更新...');
+                                loadUsageDataFromSupabase(currentRange);
+                                showToast("收到最新翻身歷程，圖表已同步", "info");
+                            }, 300);
                         }
                     }
                 )
@@ -849,9 +865,9 @@
             ['today', 'weekly', 'monthly'].forEach(r => {
                 const btn = document.getElementById(`range-${r}`);
                 if (r === range) {
-                    btn.className = "px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                    btn.className = "px-2.5 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
                 } else {
-                    btn.className = "px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800";
+                    btn.className = "px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800";
                 }
             });
 
@@ -978,7 +994,7 @@
             });
         }
 
-        // 從 Supabase 撈取真實歷程數據並更新圖表 (改為序列化執行，徹底解決手機端非同步競態)
+        // 從 Supabase 撈取真實歷程數據並更新圖表 (序列化執行)
         async function loadUsageDataFromSupabase(range) {
             if (!currentDeviceId) return;
 
@@ -990,7 +1006,7 @@
 
             if (range === 'today') {
                 startDate.setHours(0, 0, 0, 0);
-                startDate.setMinutes(startDate.getMinutes() - 1); // 緩衝時間
+                startDate.setMinutes(startDate.getMinutes() - 1);
                 timelineCard.classList.remove('hidden');
                 document.getElementById('timeline-title').textContent = '今日床體運作時間軸';
             } else if (range === 'weekly') {
@@ -1037,7 +1053,7 @@
                 const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
                 const idleHours = (idleSeconds / 3600).toFixed(1);
 
-                // 2. 序列化步驟二：依序查詢左側翻身次數（確保不與其他請求並發搶佔資源）
+                // 2. 序列化步驟二：依序查詢左側翻身次數
                 const { count: leftCount, error: leftErr } = await supabaseClient
                     .from('device_logs')
                     .select('*', { count: 'exact', head: true })
@@ -1088,7 +1104,175 @@
             }
         }
 
-        // 處理甘特圖數據 (配合 start/stop session 結構)
+        // --- CSV 數據打包與下載核心邏輯 (使用 Blob 並嵌入 UTF-8 BOM 避免亂碼) ---
+        function downloadJSONAsCSV(dataArray, filename = 'export.csv') {
+            if (!dataArray || !dataArray.length) {
+                showToast("沒有可匯出的歷程資料", "error");
+                return;
+            }
+
+            const headers = Object.keys(dataArray[0]);
+            const csvRows = [];
+            csvRows.push(headers.join(','));
+
+            dataArray.forEach(row => {
+                const values = headers.map(header => {
+                    const val = row[header] === null || row[header] === undefined ? '' : String(row[header]);
+                    const escaped = val.replace(/"/g, '""');
+                    return `"${escaped}"`;
+                });
+                csvRows.push(values.join(','));
+            });
+
+            const csvString = csvRows.join('\n');
+
+            // 加上 \uFEFF 標頭，強迫使用 UTF-8 編碼開啟 CSV
+            const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- 輔助函式：將秒數轉換為 HH:MM:SS 格式 ---
+        function formatSecondsToHMS(totalSeconds) {
+            const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+            const hours = Math.floor(s / 3600);
+            const minutes = Math.floor((s % 3600) / 60);
+            const seconds = s % 60;
+            return [
+                hours.toString().padStart(2, '0'),
+                minutes.toString().padStart(2, '0'),
+                seconds.toString().padStart(2, '0')
+            ].join(':');
+        }
+
+        // --- 匯出單次運作歷程 CSV/Excel (解決中文亂碼與 ### 問題) ---
+        async function exportDeviceLogsToCSV() {
+            if (!currentDeviceId) {
+                showToast("請先選擇裝置", "error");
+                return;
+            }
+
+            showToast("正在統計並準備匯出報表...", "info");
+
+            try {
+                // 1. 撈取單次運作區間資料 (v_device_operation_sessions)
+                const { data: sessionRows, error: sessionErr } = await supabaseClient
+                    .from('v_device_operation_sessions')
+                    .select('start_time, end_time, duration_seconds')
+                    .eq('device_id', currentDeviceId)
+                    .eq('action', 'start')
+                    .order('start_time', { ascending: false });
+
+                if (sessionErr) throw sessionErr;
+
+                if (!sessionRows || sessionRows.length === 0) {
+                    showToast("目前沒有可匯出的運作歷程資料", "error");
+                    return;
+                }
+
+                // 2. 撈取該裝置所有的翻身紀錄 (device_logs)
+                const { data: logRows, error: logErr } = await supabaseClient
+                    .from('device_logs')
+                    .select('action, recorded_at')
+                    .eq('device_id', currentDeviceId)
+                    .in('action', ['turn_left', 'turn_right']);
+
+                if (logErr) throw logErr;
+
+                const validLogs = Array.isArray(logRows) ? logRows : [];
+
+                // 3. 逐筆比對 Session，計算該次運作時間內的左/右翻身次數
+                const exportData = sessionRows.map(session => {
+                    const startMs = new Date(session.start_time).getTime();
+                    const endMs = session.end_time ? new Date(session.end_time).getTime() : Date.now();
+
+                    // 日期格式：YYYY-MM-DD
+                    const startDate = new Date(session.start_time);
+                    const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+
+                    let leftCount = 0;
+                    let rightCount = 0;
+
+                    validLogs.forEach(log => {
+                        if (!log.recorded_at) return;
+                        const logMs = new Date(log.recorded_at).getTime();
+                        if (logMs >= startMs && logMs <= endMs) {
+                            if (log.action === 'turn_left') leftCount++;
+                            if (log.action === 'turn_right') rightCount++;
+                        }
+                    });
+
+                    return {
+                        "日期": dateStr,
+                        "單次運作時間": formatSecondsToHMS(session.duration_seconds),
+                        "左側翻身次數": leftCount,
+                        "右側翻身次數": rightCount,
+                        "裝置ID": currentDeviceId,
+                        "使用者ID": currentAccountId || "Unknown"
+                    };
+                });
+
+                // 4. 若支援 XLSX，直接匯出原生 Excel 檔案（解決 CSV 所有編碼亂碼與 ### 問題）
+                const fileName = `${currentDeviceId}_單次運作歷程_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                
+                if (typeof XLSX !== 'undefined') {
+                    const worksheet = XLSX.utils.json_to_sheet(exportData);
+                    // 設定欄寬避免 ###
+                    worksheet['!cols'] = [
+                        { wch: 14 }, // 日期
+                        { wch: 14 }, // 單次運作時間
+                        { wch: 14 }, // 左側翻身次數
+                        { wch: 14 }, // 右側翻身次數
+                        { wch: 22 }, // 裝置ID
+                        { wch: 22 }  // 使用者ID
+                    ];
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "運作歷程");
+                    XLSX.writeFile(workbook, fileName);
+                } else {
+                    // Fallback: CSV
+                    const headers = ["日期", "單次運作時間", "左側翻身次數", "右側翻身次數", "裝置ID", "使用者ID"];
+                    let csvContent = headers.join(',') + '\r\n';
+                    exportData.forEach(row => {
+                        const line = [
+                            `"${row["日期"]}"`,
+                            `"${row["單次運作時間"]}"`,
+                            row["左側翻身次數"],
+                            row["右側翻身次數"],
+                            `"${row["裝置ID"]}"`,
+                            `"${row["使用者ID"]}"`
+                        ].join(',');
+                        csvContent += line + '\r\n';
+                    });
+                    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', fileName.replace('.xlsx', '.csv'));
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
+
+                showToast("報表匯出成功！", "success");
+
+            } catch (err) {
+                console.error('匯出報表失敗:', err);
+                showToast("匯出過程發生錯誤", "error");
+            }
+        }
+
+        // 處理甘特圖數據
         function updateTimelineChartData(range, dataRows, startDateRef) {
             let labels = [];
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
