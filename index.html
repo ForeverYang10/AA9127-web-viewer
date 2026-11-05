@@ -166,8 +166,7 @@
                     <span id="current-device-name" class="text-sm sm:text-base font-bold text-slate-200">未選取裝置</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <span id="wifi-dot"
-                        class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
+                    <span id="wifi-dot" class="w-3 h-3 bg-slate-500 rounded-full inline-block transition-colors"></span>
                     <span id="wifi-status-text" class="text-xs sm:text-sm font-bold text-slate-300">檢查中...</span>
                 </div>
             </div>
@@ -221,7 +220,8 @@
                 <!-- 上半部：關鍵統計數據區塊 -->
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-slate-800/60 p-3.5 rounded-xl border border-sky-500/30 text-center space-y-1">
-                        <div class="text-xs sm:text-sm text-sky-400 font-semibold flex items-center justify-center gap-1">
+                        <div
+                            class="text-xs sm:text-sm text-sky-400 font-semibold flex items-center justify-center gap-1">
                             <span>👈 左側翻身計數</span>
                         </div>
                         <div id="stat-left-count" class="text-xl sm:text-3xl font-extrabold text-sky-300">0 <span
@@ -229,7 +229,8 @@
                     </div>
 
                     <div class="bg-slate-800/60 p-3.5 rounded-xl border border-indigo-500/30 text-center space-y-1">
-                        <div class="text-xs sm:text-sm text-indigo-400 font-semibold flex items-center justify-center gap-1">
+                        <div
+                            class="text-xs sm:text-sm text-indigo-400 font-semibold flex items-center justify-center gap-1">
                             <span>👉 右側翻身計數</span>
                         </div>
                         <div id="stat-right-count" class="text-xl sm:text-3xl font-extrabold text-indigo-300">0 <span
@@ -308,7 +309,8 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs sm:text-sm font-semibold text-slate-300 mb-1">Wi-Fi 密碼 (Password)</label>
+                    <label class="block text-xs sm:text-sm font-semibold text-slate-300 mb-1">Wi-Fi 密碼
+                        (Password)</label>
                     <div class="relative">
                         <input id="wifi-pass" type="password" placeholder="請輸入欲連接的無線網路密碼"
                             class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 text-sm sm:text-base pr-14">
@@ -942,7 +944,7 @@
             });
         }
 
-        // 從 Supabase 撈取真實歷程數據並更新圖表 (序列化執行)
+        // 從 Supabase 撈取真實歷程數據並更新圖表 (支援跨日重疊檢測與正確邊界)
         async function loadUsageDataFromSupabase(range) {
             if (!currentDeviceId) return;
 
@@ -954,14 +956,15 @@
 
             if (range === 'today') {
                 startDate.setHours(0, 0, 0, 0);
-                startDate.setMinutes(startDate.getMinutes() - 1);
+                // 【關鍵修正】今日檢視的結束時間必須涵蓋整天 (23:59:59)，才能完整撈出跨日延伸進今天的紀錄
+                endDate.setHours(23, 59, 59, 999);
+
                 timelineCard.classList.remove('hidden');
                 document.getElementById('timeline-title').textContent = '今日床體運作時間軸';
             } else if (range === 'weekly') {
                 const dayOfWeek = now.getDay();
                 startDate.setDate(now.getDate() - dayOfWeek);
                 startDate.setHours(0, 0, 0, 0);
-                startDate.setMinutes(startDate.getMinutes() - 1);
 
                 endDate.setDate(startDate.getDate() + 6);
                 endDate.setHours(23, 59, 59, 999);
@@ -979,30 +982,51 @@
                 const startIso = startDate.toISOString();
                 const endIso = endDate.toISOString();
 
-                // 1. 序列化步驟一：先查運作區間 (由早到晚按時間升冪排序)
+                // 1. 查詢只要「在區間結束前開始」的紀錄（包含跨日延伸進來的）
                 const { data: sessionRows, error: sessionErr } = await supabaseClient
                     .from('v_device_operation_sessions')
                     .select('start_time, end_time, duration_seconds')
                     .eq('device_id', currentDeviceId)
                     .eq('action', 'start')
-                    .gte('start_time', startIso)
                     .lte('start_time', endIso)
                     .order('start_time', { ascending: true });
 
                 if (sessionErr) console.error('查詢運作區間錯誤:', sessionErr);
-                const validSessions = Array.isArray(sessionRows) ? sessionRows : [];
+
+                // 2. 在前端過濾出「實際與當前選擇區間有重疊」的紀錄
+                const rawSessions = Array.isArray(sessionRows) ? sessionRows : [];
+                // 定義運作區間最大合理跨度：24小時又10分鐘 (87,000 秒)，若超過視為未正常關閉/異常，不予顯示與統計
+                const MAX_SESSION_MS = (24 * 60 + 10) * 60 * 1000;
+                const validSessions = rawSessions.filter(s => {
+                    const sStart = new Date(s.start_time).getTime();
+                    const sEnd = s.end_time ? new Date(s.end_time).getTime() : now.getTime();
+                    const totalDurationMs = sEnd - sStart;
+                    if (totalDurationMs > MAX_SESSION_MS) return false;
+                    return sEnd >= startDate.getTime() && sStart <= endDate.getTime();
+                });
 
                 let activeSeconds = 0;
                 validSessions.forEach(s => {
-                    activeSeconds += Number(s.duration_seconds) || 0;
+                    const sStart = Math.max(new Date(s.start_time).getTime(), startDate.getTime());
+                    // 如果是今天，計算時數時也必須以「現在的時間 (now)」作為上限，避免把未來未發生的時數算進統計數字
+                    const upperLimit = range === 'today' ? Math.min(endDate.getTime(), now.getTime()) : endDate.getTime();
+                    const sEnd = Math.min(s.end_time ? new Date(s.end_time).getTime() : now.getTime(), upperLimit);
+
+                    if (sEnd > sStart) {
+                        activeSeconds += (sEnd - sStart) / 1000;
+                    }
                 });
 
                 const activeHours = (activeSeconds / 3600).toFixed(1);
-                const totalRangeSeconds = (endDate.getTime() - startDate.getTime()) / 1000;
+
+                // 總時數基底：若為今日，總時數分母應計算到「現在為止」的時間差，而非整天 24 小時
+                const rangeDurationMs = range === 'today' ? Math.min(now.getTime() - startDate.getTime(), 24 * 3600 * 1000) : (endDate.getTime() - startDate.getTime());
+                const totalRangeSeconds = rangeDurationMs / 1000;
+
                 const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
                 const idleHours = (idleSeconds / 3600).toFixed(1);
 
-                // 2. 序列化步驟二：依序查詢左側翻身次數
+                // 3. 查詢左右側翻身次數
                 const { count: leftCount, error: leftErr } = await supabaseClient
                     .from('device_logs')
                     .select('*', { count: 'exact', head: true })
@@ -1013,7 +1037,6 @@
 
                 if (leftErr) console.error('查詢左側次數錯誤:', leftErr);
 
-                // 3. 序列化步驟三：依序查詢右側翻身次數
                 const { count: rightCount, error: rightErr } = await supabaseClient
                     .from('device_logs')
                     .select('*', { count: 'exact', head: true })
@@ -1244,7 +1267,7 @@
             }
         }
 
-        // 處理甘特圖數據
+        // 處理甘特圖數據（嚴格限制今日圖表終點不超過當前時間）
         function updateTimelineChartData(range, dataRows, startDateRef) {
             let labels = [];
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
@@ -1269,32 +1292,73 @@
             const sortedRows = [...dataRows].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
             sortedRows.forEach(r => {
-                if (!r.start_time || !r.end_time) return;
+                if (!r.start_time) return;
 
-                const start = new Date(r.start_time);
-                const end = new Date(r.end_time);
+                const sessionStart = new Date(r.start_time);
+                // 若正在運作中無 end_time，預設至 now
+                const sessionEnd = r.end_time ? new Date(r.end_time) : new Date(now);
 
-                const targetDayStr = `週${dayNames[start.getDay()]}`;
-                const targetDateStr = `${start.getMonth() + 1}/${start.getDate()}`;
+                if (sessionEnd <= sessionStart) return;
 
-                let key = '';
-                if (range === 'today') {
-                    key = labels[0].join('-');
-                } else {
-                    key = `${targetDayStr}-${targetDateStr}`;
-                }
+                // 若單次運作區間超過 24 小時（加 10 分鐘餘量），判定為異常紀錄，不繪製該區段
+                const MAX_SESSION_MS = (24 * 60 + 10) * 60 * 1000;
+                if ((sessionEnd.getTime() - sessionStart.getTime()) > MAX_SESSION_MS) return;
 
-                if (dayIntervalsMap[key]) {
-                    dayIntervalsMap[key].count += 1;
-                    const startDec = start.getHours() + start.getMinutes() / 60;
-                    const endDec = end.getHours() + end.getMinutes() / 60;
-                    const timeStr = `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')} ~ ${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`;
+                let curr = new Date(sessionStart);
+                curr.setHours(0, 0, 0, 0);
 
-                    dayIntervalsMap[key].bars.push({
-                        x: [startDec, endDec],
-                        color: '#10b981',
-                        timeStr: timeStr
-                    });
+                while (curr < sessionEnd) {
+                    const dayStart = new Date(curr);
+                    const nextDay = new Date(curr);
+                    nextDay.setDate(nextDay.getDate() + 1);
+
+                    let actualStart = sessionStart > dayStart ? sessionStart : dayStart;
+                    let actualEnd = sessionEnd < nextDay ? sessionEnd : nextDay;
+
+                    // 若為今日視圖，結束時間不可超過當前時間
+                    if (range === 'today' && actualEnd > now) {
+                        actualEnd = new Date(now);
+                    }
+
+                    if (actualStart < actualEnd) {
+                        const targetDayStr = `週${dayNames[actualStart.getDay()]}`;
+                        const targetDateStr = `${actualStart.getMonth() + 1}/${actualStart.getDate()}`;
+
+                        let key = '';
+                        if (range === 'today') {
+                            // 嚴格比對切分區段是否屬於今天（年、月、日），避免跨夜前一天的前半段誤計入今日
+                            if (actualStart.getFullYear() === now.getFullYear() &&
+                                actualStart.getMonth() === now.getMonth() &&
+                                actualStart.getDate() === now.getDate()) {
+                                key = labels[0].join('-');
+                            }
+                        } else {
+                            key = `${targetDayStr}-${targetDateStr}`;
+                        }
+
+                        if (key && dayIntervalsMap[key]) {
+                            dayIntervalsMap[key].count += 1;
+
+                            const startDec = actualStart.getHours() + actualStart.getMinutes() / 60 + actualStart.getSeconds() / 3600;
+                            // 跨越午夜 24:00 時精準對齊 24.0h
+                            const isMidnight = (actualEnd.getTime() === nextDay.getTime());
+                            const endDec = isMidnight ? 24.0 : (actualEnd.getHours() + actualEnd.getMinutes() / 60 + actualEnd.getSeconds() / 3600);
+
+                            const startH = actualStart.getHours().toString().padStart(2, '0');
+                            const startM = actualStart.getMinutes().toString().padStart(2, '0');
+                            const endH = isMidnight ? '24' : actualEnd.getHours().toString().padStart(2, '0');
+                            const endM = isMidnight ? '00' : actualEnd.getMinutes().toString().padStart(2, '0');
+                            const timeStr = `${startH}:${startM} ~ ${endH}:${endM}`;
+
+                            dayIntervalsMap[key].bars.push({
+                                x: [startDec, endDec],
+                                color: '#10b981',
+                                timeStr: timeStr
+                            });
+                        }
+                    }
+
+                    curr = nextDay;
                 }
             });
 
@@ -1317,7 +1381,7 @@
                     if (entry && entry.bars.length > 0) {
                         entry.bars.forEach((b, barIdx) => {
                             flattenedBars.push({
-                                x: b.x,
+                                x: b.x, // 這裡會直接帶入已經被截斷到 08:09 的正確 [startDec, endDec]
                                 y: lbl,
                                 intervals: [b],
                                 totalCount: entry.count,
