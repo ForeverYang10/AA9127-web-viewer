@@ -956,7 +956,6 @@
 
             if (range === 'today') {
                 startDate.setHours(0, 0, 0, 0);
-                // 【關鍵修正】今日檢視的結束時間必須涵蓋整天 (23:59:59)，才能完整撈出跨日延伸進今天的紀錄
                 endDate.setHours(23, 59, 59, 999);
 
                 timelineCard.classList.remove('hidden');
@@ -966,6 +965,8 @@
                 startDate.setDate(now.getDate() - dayOfWeek);
                 startDate.setHours(0, 0, 0, 0);
 
+                // 本週結束時間設為本週六/日結束 (包含未來時間)
+                endDate = new Date(startDate);
                 endDate.setDate(startDate.getDate() + 6);
                 endDate.setHours(23, 59, 59, 999);
 
@@ -973,6 +974,8 @@
                 document.getElementById('timeline-title').textContent = '本週 (週日~週六) 床體運作時段';
             } else if (range === 'monthly') {
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+
+                // 本月結束時間設為本月最後一天結束 (包含未來時間)
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
                 timelineCard.classList.add('hidden');
@@ -982,7 +985,7 @@
                 const startIso = startDate.toISOString();
                 const endIso = endDate.toISOString();
 
-                // 1. 查詢只要「在區間結束前開始」的紀錄（包含跨日延伸進來的）
+                // 1. 查詢歷史區間
                 const { data: sessionRows, error: sessionErr } = await supabaseClient
                     .from('v_device_operation_sessions')
                     .select('start_time, end_time, duration_seconds')
@@ -993,9 +996,7 @@
 
                 if (sessionErr) console.error('查詢運作區間錯誤:', sessionErr);
 
-                // 2. 在前端過濾出「實際與當前選擇區間有重疊」的紀錄
                 const rawSessions = Array.isArray(sessionRows) ? sessionRows : [];
-                // 定義運作區間最大合理跨度：24小時又10分鐘 (87,000 秒)，若超過視為未正常關閉/異常，不予顯示與統計
                 const MAX_SESSION_MS = (24 * 60 + 10) * 60 * 1000;
                 const validSessions = rawSessions.filter(s => {
                     const sStart = new Date(s.start_time).getTime();
@@ -1008,8 +1009,7 @@
                 let activeSeconds = 0;
                 validSessions.forEach(s => {
                     const sStart = Math.max(new Date(s.start_time).getTime(), startDate.getTime());
-                    // 如果是今天，計算時數時也必須以「現在的時間 (now)」作為上限，避免把未來未發生的時數算進統計數字
-                    const upperLimit = range === 'today' ? Math.min(endDate.getTime(), now.getTime()) : endDate.getTime();
+                    const upperLimit = Math.min(endDate.getTime(), now.getTime());
                     const sEnd = Math.min(s.end_time ? new Date(s.end_time).getTime() : now.getTime(), upperLimit);
 
                     if (sEnd > sStart) {
@@ -1019,9 +1019,8 @@
 
                 const activeHours = (activeSeconds / 3600).toFixed(1);
 
-                // 總時數基底：若為今日，總時數分母應計算到「現在為止」的時間差，而非整天 24 小時
-                const rangeDurationMs = range === 'today' ? Math.min(now.getTime() - startDate.getTime(), 24 * 3600 * 1000) : (endDate.getTime() - startDate.getTime());
-                const totalRangeSeconds = rangeDurationMs / 1000;
+                // 總時間基底：包含未來時間（今日為 24 小時，本週為 7 天，本月為當月總天數）
+                const totalRangeSeconds = Math.max(0, (endDate.getTime() - startDate.getTime()) / 1000);
 
                 const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
                 const idleHours = (idleSeconds / 3600).toFixed(1);
@@ -1076,7 +1075,7 @@
             }
         }
 
-        // --- CSV 數據打包與下載核心邏輯 (使用 Blob 並嵌入 UTF-8 BOM 避免亂碼) ---
+        // --- CSV 數據打包與下載核心邏輯 ---
         function downloadJSONAsCSV(dataArray, filename = 'export.csv') {
             if (!dataArray || !dataArray.length) {
                 showToast("沒有可匯出的歷程資料", "error");
@@ -1097,8 +1096,6 @@
             });
 
             const csvString = csvRows.join('\n');
-
-            // 加上 \uFEFF 標頭，強迫使用 UTF-8 編碼開啟 CSV
             const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
 
             const link = document.createElement('a');
@@ -1112,7 +1109,6 @@
             URL.revokeObjectURL(url);
         }
 
-        // --- 輔助函式：將秒數轉換為 HH:MM:SS 格式 ---
         function formatSecondsToHMS(totalSeconds) {
             const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
             const hours = Math.floor(s / 3600);
@@ -1125,7 +1121,6 @@
             ].join(':');
         }
 
-        // --- 匯出單次運作歷程 CSV/Excel (僅匯出目前選取裝置 + 對應時間區間) ---
         async function exportDeviceLogsToCSV() {
             if (!currentDeviceId) {
                 showToast("請先選擇裝置", "error");
@@ -1267,7 +1262,6 @@
             }
         }
 
-        // 處理甘特圖數據（嚴格限制今日圖表終點不超過當前時間）
         function updateTimelineChartData(range, dataRows, startDateRef) {
             let labels = [];
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
@@ -1295,12 +1289,10 @@
                 if (!r.start_time) return;
 
                 const sessionStart = new Date(r.start_time);
-                // 若正在運作中無 end_time，預設至 now
                 const sessionEnd = r.end_time ? new Date(r.end_time) : new Date(now);
 
                 if (sessionEnd <= sessionStart) return;
 
-                // 若單次運作區間超過 24 小時（加 10 分鐘餘量），判定為異常紀錄，不繪製該區段
                 const MAX_SESSION_MS = (24 * 60 + 10) * 60 * 1000;
                 if ((sessionEnd.getTime() - sessionStart.getTime()) > MAX_SESSION_MS) return;
 
@@ -1315,7 +1307,6 @@
                     let actualStart = sessionStart > dayStart ? sessionStart : dayStart;
                     let actualEnd = sessionEnd < nextDay ? sessionEnd : nextDay;
 
-                    // 若為今日視圖，結束時間不可超過當前時間
                     if (range === 'today' && actualEnd > now) {
                         actualEnd = new Date(now);
                     }
@@ -1326,7 +1317,6 @@
 
                         let key = '';
                         if (range === 'today') {
-                            // 嚴格比對切分區段是否屬於今天（年、月、日），避免跨夜前一天的前半段誤計入今日
                             if (actualStart.getFullYear() === now.getFullYear() &&
                                 actualStart.getMonth() === now.getMonth() &&
                                 actualStart.getDate() === now.getDate()) {
@@ -1340,7 +1330,6 @@
                             dayIntervalsMap[key].count += 1;
 
                             const startDec = actualStart.getHours() + actualStart.getMinutes() / 60 + actualStart.getSeconds() / 3600;
-                            // 跨越午夜 24:00 時精準對齊 24.0h
                             const isMidnight = (actualEnd.getTime() === nextDay.getTime());
                             const endDec = isMidnight ? 24.0 : (actualEnd.getHours() + actualEnd.getMinutes() / 60 + actualEnd.getSeconds() / 3600);
 
@@ -1381,7 +1370,7 @@
                     if (entry && entry.bars.length > 0) {
                         entry.bars.forEach((b, barIdx) => {
                             flattenedBars.push({
-                                x: b.x, // 這裡會直接帶入已經被截斷到 08:09 的正確 [startDec, endDec]
+                                x: b.x,
                                 y: lbl,
                                 intervals: [b],
                                 totalCount: entry.count,
@@ -1398,7 +1387,6 @@
             }
         }
 
-        // 自訂圖例
         function renderCustomLegend(items) {
             const legendBox = document.getElementById('chart-legend-custom');
             legendBox.innerHTML = '';
@@ -1427,7 +1415,6 @@
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        // Supabase 動態心跳查詢
         async function checkDeviceStatus() {
             if (!currentDeviceId) {
                 const label = document.getElementById('wifi-status-text');
@@ -1513,7 +1500,6 @@
             log('已清除本地快取資訊。');
         }
 
-        // Web BLE 配網流程
         async function startBLEProvisioning() {
             const ssid = document.getElementById('wifi-ssid').value.trim();
             const pass = document.getElementById('wifi-pass').value.trim();
@@ -1573,7 +1559,6 @@
             }
         }
 
-        // 向 Supabase 寫入真實的 user_devices 關聯
         async function registerDeviceToUser(accountId, deviceId) {
             try {
                 const response = await fetch(`${SUPABASE_BASE_URL}/user_devices`, {
