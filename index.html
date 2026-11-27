@@ -1123,6 +1123,19 @@
             ].join(':');
         }
 
+        function formatDateTime(dateInput) {
+            if (!dateInput) return '';
+            const d = new Date(dateInput);
+            if (Number.isNaN(d.getTime())) return '';
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const hh = String(d.getHours()).padStart(2, '0');
+            const min = String(d.getMinutes()).padStart(2, '0');
+            const ss = String(d.getSeconds()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+        }
+
         // --- 分頁撈取 Supabase 所有資料 (突破單次 1000 筆上限) ---
         async function fetchAllSupabaseRows(buildQuery, pageSize = 1000) {
             let allRows = [];
@@ -1223,8 +1236,8 @@
                     const startMs = new Date(session.start_time).getTime();
                     const endMs = session.end_time ? new Date(session.end_time).getTime() : Date.now();
 
-                    const startDateObj = new Date(session.start_time);
-                    const dateStr = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
+                    const startTimeStr = formatDateTime(session.start_time);
+                    const endTimeStr = session.end_time ? formatDateTime(session.end_time) : '進行中';
 
                     let leftCount = 0;
                     let rightCount = 0;
@@ -1239,7 +1252,8 @@
                     });
 
                     return {
-                        "日期": dateStr,
+                        "單次起始時間": startTimeStr,
+                        "單次結束時間": endTimeStr,
                         "單次運作時間": formatSecondsToHMS(session.duration_seconds),
                         "左側翻身次數": leftCount,
                         "右側翻身次數": rightCount,
@@ -1255,7 +1269,8 @@
                 if (typeof XLSX !== 'undefined') {
                     const worksheet = XLSX.utils.json_to_sheet(exportData);
                     worksheet['!cols'] = [
-                        { wch: 14 },
+                        { wch: 22 },
+                        { wch: 22 },
                         { wch: 14 },
                         { wch: 14 },
                         { wch: 14 },
@@ -1266,11 +1281,12 @@
                     XLSX.utils.book_append_sheet(workbook, worksheet, `${rangeTag}運作歷程`);
                     XLSX.writeFile(workbook, fileName);
                 } else {
-                    const headers = ["日期", "單次運作時間", "左側翻身次數", "右側翻身次數", "裝置ID", "使用者ID"];
+                    const headers = ["單次起始時間", "單次結束時間", "單次運作時間", "左側翻身次數", "右側翻身次數", "裝置ID", "使用者ID"];
                     let csvContent = headers.join(',') + '\r\n';
                     exportData.forEach(row => {
                         const line = [
-                            `"${row["日期"]}"`,
+                            `"${row["單次起始時間"]}"`,
+                            `"${row["單次結束時間"]}"`,
                             `"${row["單次運作時間"]}"`,
                             row["左側翻身次數"],
                             row["右側翻身次數"],
