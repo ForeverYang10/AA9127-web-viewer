@@ -1321,6 +1321,7 @@
             });
 
             const sortedRows = [...dataRows].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+            let rangeSessionCount = 0;
 
             sortedRows.forEach(r => {
                 if (!r.start_time) return;
@@ -1344,6 +1345,7 @@
                     ? `${fmtDateTime(sessionStart)} ~ ${fmtDateTime(sessionEnd)}`
                     : `${fmtTime(sessionStart)} ~ ${fmtTime(sessionEnd)}`;
 
+                let assignedSessionIndex = null;
                 let curr = new Date(sessionStart);
                 curr.setHours(0, 0, 0, 0);
 
@@ -1375,6 +1377,10 @@
                         }
 
                         if (key && dayIntervalsMap[key]) {
+                            if (assignedSessionIndex === null) {
+                                rangeSessionCount += 1;
+                                assignedSessionIndex = rangeSessionCount;
+                            }
                             dayIntervalsMap[key].count += 1;
 
                             const startDec = actualStart.getHours() + actualStart.getMinutes() / 60 + actualStart.getSeconds() / 3600;
@@ -1384,7 +1390,8 @@
                             dayIntervalsMap[key].bars.push({
                                 x: [startDec, endDec],
                                 color: '#10b981',
-                                timeStr: fullTimeStr
+                                timeStr: fullTimeStr,
+                                sessionIndex: assignedSessionIndex
                             });
                         }
                     }
@@ -1410,13 +1417,13 @@
                     const key = Array.isArray(lbl) ? lbl.join('-') : lbl;
                     const entry = dayIntervalsMap[key];
                     if (entry && entry.bars.length > 0) {
-                        entry.bars.forEach((b, barIdx) => {
+                        entry.bars.forEach((b) => {
                             flattenedBars.push({
                                 x: b.x,
                                 y: lbl,
                                 intervals: [b],
-                                totalCount: entry.count,
-                                sessionIndex: barIdx + 1
+                                totalCount: rangeSessionCount,
+                                sessionIndex: b.sessionIndex
                             });
                             flattenedColors.push(b.color);
                         });
