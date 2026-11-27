@@ -178,7 +178,7 @@
             <!-- 時間範圍切換選單與 CSV 匯出按鈕 -->
             <div
                 class="flex flex-wrap justify-between items-center bg-slate-900/50 p-2 rounded-lg border border-slate-800 gap-2">
-                <div class="flex items-center gap-1.5 text-xs sm:text-sm">
+                <div class="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm">
                     <span class="font-semibold text-slate-300 px-1">統計區間:</span>
                     <button id="range-today" onclick="setRange('today')"
                         class="px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">今日</button>
@@ -186,6 +186,8 @@
                         class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本週</button>
                     <button id="range-monthly" onclick="setRange('monthly')"
                         class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">本月</button>
+                    <button id="range-all" onclick="setRange('all')"
+                        class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:bg-slate-800">全部歷史</button>
                 </div>
                 <!-- 📥 Excel 匯出功能按鈕 -->
                 <button onclick="exportDeviceLogsToCSV()"
@@ -811,8 +813,9 @@
         // 時間區間切換
         function setRange(range) {
             currentRange = range;
-            ['today', 'weekly', 'monthly'].forEach(r => {
+            ['today', 'weekly', 'monthly', 'all'].forEach(r => {
                 const btn = document.getElementById(`range-${r}`);
+                if (!btn) return;
                 if (r === range) {
                     btn.className = "px-3 py-1 rounded-md font-medium transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
                 } else {
@@ -979,24 +982,34 @@
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
                 timelineCard.classList.add('hidden');
+            } else if (range === 'all') {
+                startDate = null;
+                endDate = new Date(now);
+                timelineCard.classList.add('hidden');
             }
 
             try {
-                const startIso = startDate.toISOString();
+                const isAllRange = range === 'all';
+                const startIso = startDate ? startDate.toISOString() : null;
                 const endIso = endDate.toISOString();
 
-                // 1. 查詢歷史區間 (往前多抓 25 小時以涵蓋跨日運作，並使用分頁避免超過 1000 筆截斷)
-                const sessionQueryStartIso = new Date(startDate.getTime() - 25 * 60 * 60 * 1000).toISOString();
-                const sessionRows = await fetchAllSupabaseRows(() =>
-                    supabaseClient
+                // 1. 查詢歷史區間 (非全部歷史時往前多抓 25 小時以涵蓋跨日運作，並使用分頁避免超過 1000 筆截斷)
+                const sessionQueryStartIso = startDate
+                    ? new Date(startDate.getTime() - 25 * 60 * 60 * 1000).toISOString()
+                    : null;
+                const sessionRows = await fetchAllSupabaseRows(() => {
+                    let query = supabaseClient
                         .from('v_device_operation_sessions')
                         .select('start_time, end_time, duration_seconds')
                         .eq('device_id', currentDeviceId)
-                        .eq('action', 'start')
-                        .gte('start_time', sessionQueryStartIso)
-                        .lte('start_time', endIso)
-                        .order('start_time', { ascending: true })
-                );
+                        .eq('action', 'start');
+                    if (!isAllRange) {
+                        query = query
+                            .gte('start_time', sessionQueryStartIso)
+                            .lte('start_time', endIso);
+                    }
+                    return query.order('start_time', { ascending: true });
+                });
 
                 const rawSessions = Array.isArray(sessionRows) ? sessionRows : [];
                 const MAX_SESSION_MS = (24 * 60 + 10) * 60 * 1000;
@@ -1005,12 +1018,16 @@
                     const sEnd = s.end_time ? new Date(s.end_time).getTime() : now.getTime();
                     const totalDurationMs = sEnd - sStart;
                     if (totalDurationMs > MAX_SESSION_MS) return false;
+                    if (isAllRange) return true;
                     return sEnd >= startDate.getTime() && sStart <= endDate.getTime();
                 });
 
                 let activeSeconds = 0;
+                let earliestAllStartMs = Infinity;
                 validSessions.forEach(s => {
-                    const sStart = Math.max(new Date(s.start_time).getTime(), startDate.getTime());
+                    const rawStartMs = new Date(s.start_time).getTime();
+                    if (rawStartMs < earliestAllStartMs) earliestAllStartMs = rawStartMs;
+                    const sStart = isAllRange ? rawStartMs : Math.max(rawStartMs, startDate.getTime());
                     const upperLimit = Math.min(endDate.getTime(), now.getTime());
                     const sEnd = Math.min(s.end_time ? new Date(s.end_time).getTime() : now.getTime(), upperLimit);
 
@@ -1021,30 +1038,36 @@
 
                 const activeHours = (activeSeconds / 3600).toFixed(1);
 
-                // 總時間基底：包含未來時間（今日為 24 小時，本週為 7 天，本月為當月總天數）
-                const totalRangeSeconds = Math.max(0, (endDate.getTime() - startDate.getTime()) / 1000);
+                // 總時間基底：今日為 24 小時，本週為 7 天，本月為當月總天數，全部歷史為最早紀錄至今
+                const totalRangeSeconds = isAllRange
+                    ? (Number.isFinite(earliestAllStartMs) ? Math.max(0, (now.getTime() - earliestAllStartMs) / 1000) : 0)
+                    : Math.max(0, (endDate.getTime() - startDate.getTime()) / 1000);
 
                 const idleSeconds = Math.max(0, totalRangeSeconds - activeSeconds);
                 const idleHours = (idleSeconds / 3600).toFixed(1);
 
                 // 3. 查詢左右側翻身次數
-                const { count: leftCount, error: leftErr } = await supabaseClient
+                let leftQuery = supabaseClient
                     .from('device_logs')
                     .select('*', { count: 'exact', head: true })
                     .eq('device_id', currentDeviceId)
-                    .eq('action', 'turn_left')
-                    .gte('recorded_at', startIso)
-                    .lte('recorded_at', endIso);
+                    .eq('action', 'turn_left');
+                if (!isAllRange) {
+                    leftQuery = leftQuery.gte('recorded_at', startIso).lte('recorded_at', endIso);
+                }
+                const { count: leftCount, error: leftErr } = await leftQuery;
 
                 if (leftErr) console.error('查詢左側次數錯誤:', leftErr);
 
-                const { count: rightCount, error: rightErr } = await supabaseClient
+                let rightQuery = supabaseClient
                     .from('device_logs')
                     .select('*', { count: 'exact', head: true })
                     .eq('device_id', currentDeviceId)
-                    .eq('action', 'turn_right')
-                    .gte('recorded_at', startIso)
-                    .lte('recorded_at', endIso);
+                    .eq('action', 'turn_right');
+                if (!isAllRange) {
+                    rightQuery = rightQuery.gte('recorded_at', startIso).lte('recorded_at', endIso);
+                }
+                const { count: rightCount, error: rightErr } = await rightQuery;
 
                 if (rightErr) console.error('查詢右側次數錯誤:', rightErr);
 
@@ -1068,7 +1091,7 @@
                 ]);
 
                 // 6. 更新甘特圖
-                if (range !== 'monthly') {
+                if (range !== 'monthly' && range !== 'all') {
                     updateTimelineChartData(range, validSessions, startDate);
                 }
 
@@ -1183,22 +1206,29 @@
             } else if (currentRange === 'monthly') {
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+            } else if (currentRange === 'all') {
+                startDate = null;
+                endDate = new Date(now);
             }
 
-            const startIso = startDate.toISOString();
+            const isAllRange = currentRange === 'all';
+            const startIso = startDate ? startDate.toISOString() : null;
             const endIso = endDate.toISOString();
 
             try {
-                const sessionRows = await fetchAllSupabaseRows(() =>
-                    supabaseClient
+                const sessionRows = await fetchAllSupabaseRows(() => {
+                    let query = supabaseClient
                         .from('v_device_operation_sessions')
                         .select('start_time, end_time, duration_seconds')
                         .eq('device_id', currentDeviceId)
-                        .eq('action', 'start')
-                        .gte('start_time', startIso)
-                        .lte('start_time', endIso)
-                        .order('start_time', { ascending: false })
-                );
+                        .eq('action', 'start');
+                    if (!isAllRange) {
+                        query = query
+                            .gte('start_time', startIso)
+                            .lte('start_time', endIso);
+                    }
+                    return query.order('start_time', { ascending: false });
+                });
 
                 if (!sessionRows || sessionRows.length === 0) {
                     showToast(`裝置【${deviceName}】在該區間內無運作歷程資料`, "error");
@@ -1262,7 +1292,7 @@
                     };
                 });
 
-                const rangeTagMap = { today: '今日', weekly: '本週', monthly: '本月' };
+                const rangeTagMap = { today: '今日', weekly: '本週', monthly: '本月', all: '全部歷史' };
                 const rangeTag = rangeTagMap[currentRange] || currentRange;
                 const fileName = `${deviceName}_${rangeTag}運作歷程_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
