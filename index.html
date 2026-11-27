@@ -1333,6 +1333,17 @@
                 const MAX_SESSION_MS = (24 * 60 + 10) * 60 * 1000;
                 if ((sessionEnd.getTime() - sessionStart.getTime()) > MAX_SESSION_MS) return;
 
+                const isCrossDay = (
+                    sessionStart.getFullYear() !== sessionEnd.getFullYear() ||
+                    sessionStart.getMonth() !== sessionEnd.getMonth() ||
+                    sessionStart.getDate() !== sessionEnd.getDate()
+                );
+                const fmtTime = (d) => `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                const fmtDateTime = (d) => `${d.getMonth() + 1}/${d.getDate()} ${fmtTime(d)}`;
+                const fullTimeStr = isCrossDay
+                    ? `${fmtDateTime(sessionStart)} ~ ${fmtDateTime(sessionEnd)}`
+                    : `${fmtTime(sessionStart)} ~ ${fmtTime(sessionEnd)}`;
+
                 let curr = new Date(sessionStart);
                 curr.setHours(0, 0, 0, 0);
 
@@ -1370,16 +1381,10 @@
                             const isMidnight = (actualEnd.getTime() === nextDay.getTime());
                             const endDec = isMidnight ? 24.0 : (actualEnd.getHours() + actualEnd.getMinutes() / 60 + actualEnd.getSeconds() / 3600);
 
-                            const startH = actualStart.getHours().toString().padStart(2, '0');
-                            const startM = actualStart.getMinutes().toString().padStart(2, '0');
-                            const endH = isMidnight ? '24' : actualEnd.getHours().toString().padStart(2, '0');
-                            const endM = isMidnight ? '00' : actualEnd.getMinutes().toString().padStart(2, '0');
-                            const timeStr = `${startH}:${startM} ~ ${endH}:${endM}`;
-
                             dayIntervalsMap[key].bars.push({
                                 x: [startDec, endDec],
                                 color: '#10b981',
-                                timeStr: timeStr
+                                timeStr: fullTimeStr
                             });
                         }
                     }
